@@ -1,0 +1,48 @@
+package com.seshrao.stockxpress.productservice.service;
+
+import com.seshrao.stockxpress.productservice.dto.ProductRequest;
+import com.seshrao.stockxpress.productservice.dto.ProductResponse;
+import com.seshrao.stockxpress.productservice.model.Product;
+import com.seshrao.stockxpress.productservice.repository.ProductRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+   //The @RequiredArgsConstructor annotation generates the constructors with
+   // one parameter for each field needing special handling
+   // For example, final fields need to be initialized
+
+@Slf4j
+public class ProductService {
+
+    private final ProductRepository productRepository ;
+    public void createProduct(ProductRequest productRequest){
+        Product product = Product.builder()
+                .name(productRequest.getName())
+                .description(productRequest.getDescription())
+                .price(productRequest.getPrice())
+                .build();
+
+        productRepository.save(product) ;
+        log.info("Product {} is saved" , product );
+    }
+
+    public List<ProductResponse> getAllProducts() {
+        List<Product> products = productRepository.findAll();
+        return products.stream().map(this::mapToProductResponse).collect(Collectors.toList());
+    }
+
+    private ProductResponse mapToProductResponse(Product product) {
+        return ProductResponse.builder()
+                .id(product.getId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .price(product.getPrice())
+                .build();
+    }
+}
