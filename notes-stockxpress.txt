@@ -1,0 +1,11 @@
+product-service
+
+com.seshrao.stockxpress.productservice
+
+order-service
+
+com.seshrao.stockxpress.orderservice
+
+inventory-service
+
+com.seshrao.stockxpress.inventoryservice
