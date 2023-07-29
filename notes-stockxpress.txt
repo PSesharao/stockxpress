@@ -9,3 +9,8 @@ com.seshrao.stockxpress.orderservice
 inventory-service
 
 com.seshrao.stockxpress.inventoryservice
+
+
+discovery-server
+
+DiscoveryServerApplication
