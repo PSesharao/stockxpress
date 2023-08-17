@@ -23,6 +23,7 @@ public class OrderController {
     @CircuitBreaker(name = "inventory", fallbackMethod = "fallbackMethod")
     @TimeLimiter(name = "inventory")
     @Retry(name = "inventory")
+    // It represents a future result of an asynchronous computation.
     public CompletableFuture<String> placeOrder(@RequestBody OrderRequest orderRequest) {
         return CompletableFuture.supplyAsync(()-> orderService.placeOrder(orderRequest));
     }

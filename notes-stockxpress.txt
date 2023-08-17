@@ -19,11 +19,59 @@ api-gateway
 
 ApiGatewayApplication 
 
-docker run -p 8181:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:22.0.1 start-dev
 
-stockxpress-app
+
+
 
 rPk1tGrbyCc096hqVfxFeabvESSoimvX
 
 "issuer": "http://localhost:8181/realms/stockxpress",
 
+How to make a request ? 
+
+Step 1 : Run 
+
+docker run -p 8181:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:22.0.1 start-dev
+
+Step 2 : Go to 
+
+http://localhost:8181/ 
+
+Step 3 : Go to Administrative Console
+
+Here give the Username : admin and Password : admin 
+
+We have to now Create Realm
+
+Give the realmname as "stockxpress"
+
+Step 4 : Go to Clients
+
+Click on create client 
+
+Under General Settings
+
+Give Client Id as  "stockxpress-app"
+
+Under Capability Config 
+
+Turn on Client authentication
+
+Uncheck both Standard flow , Direct access grants
+
+Check Service accounts roles option
+
+Step 5 : 
+We can get the client secret from the Client Credentials 
+
+
+
+For Zipkins : 
+docker run -d -p 9411:9411 openzipkin/zipkin
+
+http://localhost:9411/
+
+If we make call to the order service from the API gateway , till order-service it will be single thread only , 
+but since we have added the circuitbreaker , we see that inventory-service will be on different thread
+
+Kafka

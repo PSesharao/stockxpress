@@ -7,6 +7,8 @@ import com.seshrao.stockxpress.orderservice.model.Order;
 import com.seshrao.stockxpress.orderservice.model.OrderLineItem;
 import com.seshrao.stockxpress.orderservice.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cloud.sleuth.Span;
+import org.springframework.cloud.sleuth.Tracer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -24,6 +26,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final WebClient.Builder webClientBuilder ;
+    private final Tracer tracer;
 
     public String placeOrder(OrderRequest orderRequest){
         Order order = Order.builder()
@@ -31,30 +34,41 @@ public class OrderService {
                 .orderLineItemList(orderRequest.getOrderLineItemList().stream()
                                 .map(this::mapToDto).collect(Collectors.toList()))
                 .build();
-        // Call Inventory service, and place order if the product is in stock
+
 
         List<String> skuCodeList = order.getOrderLineItemList()
                 .stream()
                 .map(OrderLineItem::getSkuCode)
                 .collect(Collectors.toList());
 
-        InventoryResponse[] inventoryResponseArray = webClientBuilder.build().get()
-               // .uri("http://localhost:8082/api/inventory",
-                .uri("http://inventory-service/api/inventory",
-                        uriBuilder -> uriBuilder.queryParam("skuCode",skuCodeList).build())
-                .retrieve()
-                .bodyToMono(InventoryResponse[].class)
-                .block();// Synchronous request
+        // Call Inventory service, and place order if the product is in stock
 
-        boolean allProductsinStock = Arrays.stream(inventoryResponseArray).allMatch(InventoryResponse::isInStock);
-        // If all the items is in stock , then that expression becomes true
+        // We can create our own span
+        Span inventoryServiceLookup = tracer.nextSpan().name("InventoryServiceLookup");
 
-        if(allProductsinStock) {
-            orderRepository.save(order);
-            return "Order Placed Successfully";
-        }else{
-            throw new IllegalArgumentException("Product is not in stock , please try again later") ;
+        try (Tracer.SpanInScope isLookup = tracer.withSpan(inventoryServiceLookup.start())) {
+            InventoryResponse[] inventoryResponseArray = webClientBuilder.build().get()
+                    // .uri("http://localhost:8082/api/inventory",
+                    .uri("http://inventory-service/api/inventory",
+                            uriBuilder -> uriBuilder.queryParam("skuCode",skuCodeList).build())
+                    .retrieve()
+                    .bodyToMono(InventoryResponse[].class)
+                    .block();// Synchronous request
+
+            boolean allProductsinStock = Arrays.stream(inventoryResponseArray).allMatch(InventoryResponse::isInStock);
+            // If all the items is in stock , then that expression becomes true
+
+            if(allProductsinStock) {
+                orderRepository.save(order);
+                return "Order Placed Successfully";
+            }else{
+                throw new IllegalArgumentException("Product is not in stock , please try again later") ;
+            }
+
+        }finally {
+            inventoryServiceLookup.end();
         }
+
 
     }
 
