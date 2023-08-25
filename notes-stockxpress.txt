@@ -64,6 +64,8 @@ Check Service accounts roles option
 Step 5 : 
 We can get the client secret from the Client Credentials 
 
+Step 6 : 
+Use this client secret value in the Postman
 
 
 For Zipkins : 
@@ -75,3 +77,50 @@ If we make call to the order service from the API gateway , till order-service i
 but since we have added the circuitbreaker , we see that inventory-service will be on different thread
 
 Kafka
+docker compose up -d
+
+docker ps
+
+docker logs -f zookeeper
+
+notification-service
+
+
+
+Dockerhub credentials 
+
+seshrao
+
+mockguser01@gmail.com
+
+mockguser01@10
+
+mvn clean compile jib:build
+
+
+
+.m2/settings.xml throwing unauthorized for registry.hub.docker.com , when running mvn clean compile jib:build . How to resolve this ?  
+
+401 Unauthorized
+{"details":"incorrect username or password"}
+
+
+<password>mockguser01&#64;10</password>
+
+
+seshrao:mockguser01@10
+
+c2VzaHJhbzptb2NrZ3VzZXIwMUAxMA==
+
+
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <version>3.2.1</version>
+                <configuration>
+                    <from>
+                        <image>eclipse-temurin:8-jre</image>
+                    </from>
+                    <to><image>registry.hub.docker.com/seshrao/${artifactId}</image></to>
+                </configuration>
+            </plugin>
