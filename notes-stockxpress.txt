@@ -89,38 +89,10 @@ notification-service
 
 Dockerhub credentials 
 
+we need configure the dockerhub credentials here in "C:\Users\SESH\.docker\config.json" this file
+
 seshrao
-
-mockguser01@gmail.com
-
-mockguser01@10
 
 mvn clean compile jib:build
 
 
-
-.m2/settings.xml throwing unauthorized for registry.hub.docker.com , when running mvn clean compile jib:build . How to resolve this ?  
-
-401 Unauthorized
-{"details":"incorrect username or password"}
-
-
-<password>mockguser01&#64;10</password>
-
-
-seshrao:mockguser01@10
-
-c2VzaHJhbzptb2NrZ3VzZXIwMUAxMA==
-
-
-            <plugin>
-                <groupId>com.google.cloud.tools</groupId>
-                <artifactId>jib-maven-plugin</artifactId>
-                <version>3.2.1</version>
-                <configuration>
-                    <from>
-                        <image>eclipse-temurin:8-jre</image>
-                    </from>
-                    <to><image>registry.hub.docker.com/seshrao/${artifactId}</image></to>
-                </configuration>
-            </plugin>

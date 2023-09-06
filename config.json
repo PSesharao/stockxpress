@@ -1,0 +1,9 @@
+{
+	"auths": {
+		"registry.hub.docker.com": {
+			"auth": "c2VzaHJhbzptb2NrZ3VzZXIwMUAxMA=="
+		}
+	},
+	"credsStore": "desktop",
+	"currentContext": "default"
+}
