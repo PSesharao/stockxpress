@@ -96,3 +96,142 @@ seshrao
 mvn clean compile jib:build
 
 
+can you please provide the markdown syntax for above the exact content so that I can copy paste that in my README file
+
+why keycloak require data base ? 
+
+docker run -p 8181:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:22.0.1 start-dev
+
+The Docker run command above uses the default H2 database that comes bundled with Keycloak. This is suitable for getting started and testing Keycloak, 
+but for production use or scenarios requiring data persistence, it's recommended to use an external database like PostgreSQL, MySQL, or others.
+
+Keycloak, an open-source identity and access management (IAM) system, requires a database for several reasons.
+
+Keycloak needs to store and manage a wide range of data, including user account information, authentication tokens, access control policies, client applications, and more. A database provides a structured and efficient way 
+to store this data, making it accessible and searchable. 
+
+Keycloak often needs to retrieve and query data efficiently to perform various functions such as user authentication, authorization, and user management. 
+Databases offer robust querying capabilities, which are essential for these operations.
+
+I have 2 files application.properties , application-docker.properties , later file will be only used when I need to run the app in docker container , and has specific configuration to that , 
+do I have to copy the all properties again to application-docker.properties ? 
+
+
+docker compose up -d
+
+docker logs -f notification-service
+
+docker logs -f discovery-server
+
+docker logs -f order-service
+
+docker logs -f inventory-service
+
+docker logs -f  mysql-db
+
+docker-compose down
+
+password
+
+5f4dcc3b5aa765d61d8327deb882cf99
+
+I am running docker container of postgres image , but I am getting the below exception when connecting to it from the springboot application  
+
+org.postgresql.util.psqlexception: fatal: password authentication failed  
+
+How to set up postgres sql docker container running and connect from springboot application  ? 
+
+
+
+docker pull postgres
+
+
+docker run --name postgresql -e POSTGRES_USER=myusername -e POSTGRES_PASSWORD=mypassword -e POSTGRES_DB=order-service -p 5431:5431 -d postgres
+
+docker logs -f postgresql
+
+SPRING_PROFILES_ACTIVE=docker
+
+
+I have mysql server running in 3306 port in localhost , I want to set up mysql docker container to run aswell without conflicts , how can I do that ? 
+
+   mysql-db:
+    container_name: mysql-db
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: sesh
+      MYSQL_PASSWORD: password
+    volumes:
+      - ./mysql-db:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
+	
+	
+can you generate a corresponding my sql server docker config for below can you please help ? 
+
+
+  mysql-order:
+    container_name: mysql-order
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: order-service
+      MYSQL_USER: sesh
+      MYSQL_PASSWORD: password
+    volumes:
+      - ./mysql-order:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
+
+  mysql-inventory:
+    container_name: mysql-inventory
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: inventory-service
+      MYSQL_USER: sesh
+      MYSQL_PASSWORD: password
+    volumes:
+      - ./mysql-inventory:/var/lib/mysql
+    ports:
+      - "3307:3306"  # You can change this port if needed
+    restart: unless-stopped
+
+
+
+services:
+  h2-order:
+    container_name: h2-order
+    image: oscarfonts/h2
+    ports:
+      - "9091:8082"  # H2 web console port
+    environment:
+      - H2_OPTIONS=-ifNotExists
+    restart: unless-stopped
+
+  h2-inventory:
+    container_name: h2-inventory
+    image: oscarfonts/h2
+    ports:
+      - "9092:8082"  # H2 web console port
+    environment:
+      - H2_OPTIONS=-ifNotExists
+    restart: unless-stopped
+
+
+  order-service:
+    container_name: order-service
+    image: seshrao/order-service:latest
+    pull_policy: always
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-order:3307/order_service?createDatabaseIfNotExist=true
+    depends_on:
+      - mysql-order
+      - broker
+      - zipkin
+      - discovery-server
+      - api-gateway
