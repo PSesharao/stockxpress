@@ -68,6 +68,13 @@ Step 6 :
 Use this client secret value in the Postman
 
 
+Go to postman 
+
+Provide the access token url as : http://localhost:8181/realms/stockxpress/protocol/openid-connect/token
+
+Client Id , Client Secret we can get them from what we have created earlier from the postman 
+ 
+
 For Zipkins : 
 docker run -d -p 9411:9411 openzipkin/zipkin
 
@@ -131,107 +138,48 @@ docker logs -f  mysql-db
 
 docker-compose down
 
-password
-
-5f4dcc3b5aa765d61d8327deb882cf99
-
-I am running docker container of postgres image , but I am getting the below exception when connecting to it from the springboot application  
-
-org.postgresql.util.psqlexception: fatal: password authentication failed  
-
-How to set up postgres sql docker container running and connect from springboot application  ? 
-
-
 
 docker pull postgres
 
 
-docker run --name postgresql -e POSTGRES_USER=myusername -e POSTGRES_PASSWORD=mypassword -e POSTGRES_DB=order-service -p 5431:5431 -d postgres
 
-docker logs -f postgresql
+How to clean up docker data in local ? 
+AppData\Local\Docker\wsl\data\ext4.vhdx
 
-SPRING_PROFILES_ACTIVE=docker
-
-
-I have mysql server running in 3306 port in localhost , I want to set up mysql docker container to run aswell without conflicts , how can I do that ? 
-
-   mysql-db:
-    container_name: mysql-db
-    image: mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: sesh
-      MYSQL_PASSWORD: password
-    volumes:
-      - ./mysql-db:/var/lib/mysql
-    ports:
-      - "3306:3306"
-    restart: unless-stopped
-	
-	
-can you generate a corresponding my sql server docker config for below can you please help ? 
-
-
-  mysql-order:
-    container_name: mysql-order
-    image: mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: order-service
-      MYSQL_USER: sesh
-      MYSQL_PASSWORD: password
-    volumes:
-      - ./mysql-order:/var/lib/mysql
-    ports:
-      - "3306:3306"
-    restart: unless-stopped
-
-  mysql-inventory:
-    container_name: mysql-inventory
-    image: mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: inventory-service
-      MYSQL_USER: sesh
-      MYSQL_PASSWORD: password
-    volumes:
-      - ./mysql-inventory:/var/lib/mysql
-    ports:
-      - "3307:3306"  # You can change this port if needed
-    restart: unless-stopped
+If you're willing to wipe all of your docker data, open the Docker Desktop client, click the bug icon in the top bar, and then click Clean/Purge data:
 
 
 
-services:
-  h2-order:
-    container_name: h2-order
-    image: oscarfonts/h2
-    ports:
-      - "9091:8082"  # H2 web console port
-    environment:
-      - H2_OPTIONS=-ifNotExists
-    restart: unless-stopped
+can you please help me write a git README file for springboot microservices project "stockxpress" below are the services and features
 
-  h2-inventory:
-    container_name: h2-inventory
-    image: oscarfonts/h2
-    ports:
-      - "9092:8082"  # H2 web console port
-    environment:
-      - H2_OPTIONS=-ifNotExists
-    restart: unless-stopped
+Services : 
 
+Product Service : Create and View Products , acts as the Product Catalog.
 
-  order-service:
-    container_name: order-service
-    image: seshrao/order-service:latest
-    pull_policy: always
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-order:3307/order_service?createDatabaseIfNotExist=true
-    depends_on:
-      - mysql-order
-      - broker
-      - zipkin
-      - discovery-server
-      - api-gateway
+Order Service : We can Order Products 
+
+Inventory Service : Order service uses this and can check if product is in stock or not before going to order.
+
+Notification Service :  Can send notifications after the order is placed successfully
+
+Discovery Service : Service Discovery using Netflix Eureka for Dynamic Service Registration , Service Lookup and Load Balancing
+
+API Gateway Service :  API Gateway using Spring Cloud Gateway for Routing and Load Balancing of client requests 
+
+Features : 
+
+Circuit breaker used to provide Fault Tolerance , Preventing Cascading Failures , Fallback Mechanisms
+
+Zipkins used to provide Distributed Tracing , Latency Monitoring and Error Tracing
+
+Event Driven Architecture using Kafka where Order Service produce event , which can be stored in Kafka topic and Notification Service is going to consume that topic.
+
+Order Service ,  Inventory Service and Notification Service are going to interact with each other 
+
+We have synchronous communication between Order Service and Inventory Service and asynchronous communication between Order Service and Notification Service
+
+Keycloak identity and access management ( IAM ) auth server is used to provide support for OAuth 2.0 and OpenID Connect, making it easy to secure APIs and provide identity information to clients securely with JWT tokens. 
+
+The services and are dockerized. 
+
+This project idea is insprired from Programming Techie.
