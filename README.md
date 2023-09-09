@@ -2,54 +2,9 @@
 
 StockXpress is a microservices-based e-commerce platform designed to manage products, orders, and notifications efficiently. It utilizes Spring Boot and various technologies to provide a scalable and reliable system.
 
-## Project Overview
+## Architechture Diagram
 
-1. KeyCloak Home
-
-![KeyCloak Home](api-responses/key-cloak.png)
-
-2. KeyCloak Create Realm
-
-![KeyCloak Create Realm](api-responses/key-cloak-create-realm.png)
-
-3. KeyCloak Create Client
-
-![KeyCloak Create Client](api-responses/key-cloak-create-client.png)
-
-
-4. KeyCloak Create Client
-
-![KeyCloak Create Client](api-responses/key-cloak-create-client-1.png)
-
-5. KeyCloak Client Secret
-
-![KeyCloak Client Secret](api-responses/key-cloak-client-secret.png)
-
-6. KeyCloak Access Token
-
-![KeyCloak Access Token](api-responses/key-cloak-access-token.png)
-
-7. Unauthorized Request
-
-![Unauthorized Request](api-responses/unauthorized_request.png)
-
-8. Product Catalogue
-
-![Product Catalogue](api-responses/product-catalogue.png)
-
-9. Out Of Order Stock
-![Out Of Order Stock](api-responses/order_out_of_stock.png)
-
-10. Successful Order
-![Out Of Order Stock](api-responses/successful_order.png)
-
-11. Eureka Server
-![Eureka Server](api-responses/eureka-server.png)
-
-
-12. Zipkins Trace
-![Eureka Server](api-responses/zipkins_trace.png)
-
+![Architechture Diagram](project-architechture.png)
 
 ## Services
 
@@ -103,6 +58,55 @@ StockXpress is a microservices-based e-commerce platform designed to manage prod
 ### Dockerized Services
 
 - **Description**: All services are containerized using Docker, facilitating easy deployment and scalability.
+
+## Project Overview
+
+1. KeyCloak Home
+
+![KeyCloak Home](api-responses/key-cloak.png)
+
+2. KeyCloak Create Realm
+
+![KeyCloak Create Realm](api-responses/key-cloak-create-realm.png)
+
+3. KeyCloak Create Client
+
+![KeyCloak Create Client](api-responses/key-cloak-create-client.png)
+
+
+4. KeyCloak Create Client
+
+![KeyCloak Create Client](api-responses/key-cloak-create-client-1.png)
+
+5. KeyCloak Client Secret
+
+![KeyCloak Client Secret](api-responses/key-cloak-client-secret.png)
+
+6. KeyCloak Access Token
+
+![KeyCloak Access Token](api-responses/key-cloak-access-token.png)
+
+7. Unauthorized Request
+
+![Unauthorized Request](api-responses/unauthorized_request.png)
+
+8. Product Catalogue
+
+![Product Catalogue](api-responses/product-catalogue.png)
+
+9. Out Of Order Stock
+![Out Of Order Stock](api-responses/order_out_of_stock.png)
+
+10. Successful Order
+![Out Of Order Stock](api-responses/successful_order.png)
+
+11. Eureka Server
+![Eureka Server](api-responses/eureka-server.png)
+
+
+12. Zipkins Trace
+![Eureka Server](api-responses/zipkins_trace.png)
+
 
 ## Getting Started
 
