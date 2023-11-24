@@ -183,3 +183,46 @@ Keycloak identity and access management ( IAM ) auth server is used to provide s
 The services and are dockerized. 
 
 This project idea is insprired from Programming Techie.
+
+
+
+Spring Web Reactive and WebClient are designed to be asynchronous and reactive. This means you can make multiple concurrent requests without blocking the application thread. This is crucial in microservices because it helps maximize the scalability and responsiveness of your services.
+
+Handling Responses: WebClient allows you to handle the responses from external services efficiently. You can define how to parse and process the response data, handle errors, and transform the data into suitable formats for your microservices.
+
+Here's a basic example of how you might use WebClient in a Spring microservice:
+
+java
+Copy code
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+
+@Service
+public class MyService {
+    private final WebClient webClient;
+
+    public MyService(WebClient.Builder webClientBuilder) {
+        this.webClient = webClientBuilder.baseUrl("https://api.example.com").build();
+    }
+
+    public Mono<SomeResponse> callExternalService() {
+        return webClient.get()
+            .uri("/some-endpoint")
+            .retrieve()
+            .bodyToMono(SomeResponse.class);
+    }
+}
+In this example:
+
+We create a WebClient instance with a base URL.
+We define a method callExternalService that makes an HTTP GET request to an endpoint on the external service.
+The response is transformed into a Mono<SomeResponse> using bodyToMono, which is a reactive wrapper around the response.
+You can then use this MyService component in your microservice to interact with the external service asynchronously and handle the response as needed.
+
+In summary, you use import org.springframework.web.reactive.function.client.WebClient in Spring microservices to simplify and streamline making asynchronous HTTP requests to external services or APIs, a common requirement in microservices architectures.
+
+
+
+
+
