@@ -46,7 +46,7 @@ StockXpress is a microservices-based e-commerce platform designed to manage prod
 
 - **Description**: Utilizes Zipkin for distributed tracing, latency monitoring, and error tracing. Provides valuable insights into request processing and system performance.
 
-### Event-Driven Architecture
+### Kafka Event-Driven Architecture
 
 - **Description**: Implements event-driven architecture using Kafka. The Order Service produces events stored in Kafka topics, and the Notification Service consumes these events for order notifications.
 
