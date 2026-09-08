@@ -1,0 +1,159 @@
+# Order Service Configuration
+spring:
+  application:
+    name: order-service
+
+  # Database Configuration
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/order_service?useSSL=false
+    username: root
+    password: 949195
+
+  # JPA Configuration
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL57Dialect
+    database: MYSQL
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+
+  # Cache Configuration
+  cache:
+    type: caffeine
+    cache-names:
+      - orders
+      - inventory-check
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=10m,recordStats
+
+  # Distributed Tracing
+  zipkin:
+    base-url: http://localhost:9411
+  sleuth:
+    sampler:
+      probability: 1.0
+
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: localhost:9092
+    template:
+      default-topic: notificationTopic
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring:
+          json:
+            type:
+              mapping: event:com.seshrao.stockxpress.orderservice.event.OrderPlacedEvent
+
+# Server Configuration
+server:
+  port: 0  # Dynamic port assignment
+  # Uncomment for fixed port in development
+  # port: 8081
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+    include-exception: false
+
+# Eureka Client Configuration
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://eureka:password@localhost:8761/eureka/
+    registry-fetch-interval-seconds: 5
+    instance-info-replication-interval-seconds: 5
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 10
+
+# Resilience4j Configuration
+resilience4j:
+  # Circuit Breaker Configuration
+  circuitbreaker:
+    instances:
+      inventory:
+        registerHealthIndicator: true
+        event-consumer-buffer-size: 10
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 5s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        recordExceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - java.util.concurrent.TimeoutException
+          - java.io.IOException
+        ignoreExceptions:
+          - com.seshrao.stockxpress.common.exception.BusinessException
+
+  # Time Limiter Configuration
+  timelimiter:
+    instances:
+      inventory:
+        timeout-duration: 3s
+        cancel-running-future: true
+
+  # Retry Configuration
+  retry:
+    instances:
+      inventory:
+        max-attempts: 3
+        wait-duration: 5s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - java.util.concurrent.TimeoutException
+
+# Management Endpoints
+management:
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,circuitbreakers,caches
+  endpoint:
+    health:
+      show-details: always
+    caches:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.seshrao.stockxpress.orderservice: DEBUG
+    com.seshrao.stockxpress.common: DEBUG
+    org.springframework.web: INFO
+    org.springframework.cache: DEBUG
+    io.github.resilience4j: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] [%X{userId}] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] [%X{userId}] %-5level %logger{36} - %msg%n"
+
+# Order Service Specific Configuration
+order:
+  cache:
+    enabled: true
+    ttl: 600 # 10 minutes in seconds
+    maxSize: 500
+  validation:
+    maxLineItems: 50
+    minQuantity: 1
+    maxQuantity: 1000

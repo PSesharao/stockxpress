@@ -1,0 +1,92 @@
+# Product Service Configuration
+spring:
+  application:
+    name: product-service
+
+  # MongoDB Configuration
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/product-service
+      auto-index-creation: true
+
+  # Cache Configuration
+  cache:
+    type: caffeine
+    cache-names:
+      - products
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=30m,recordStats
+
+  # Distributed Tracing
+  zipkin:
+    base-url: http://localhost:9411
+  sleuth:
+    sampler:
+      probability: 1.0
+
+# Server Configuration
+server:
+  port: 0  # Dynamic port assignment
+  # Uncomment for fixed port in development
+  # port: 8080
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+    include-exception: false
+
+# Eureka Client Configuration
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://eureka:password@localhost:8761/eureka/
+    registry-fetch-interval-seconds: 5
+    instance-info-replication-interval-seconds: 5
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 10
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.seshrao.stockxpress.productservice: DEBUG
+    com.seshrao.stockxpress.common: DEBUG
+    org.springframework.web: INFO
+    org.springframework.cache: DEBUG
+    org.springframework.data.mongodb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] [%X{userId}] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] [%X{userId}] %-5level %logger{36} - %msg%n"
+
+# Management Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,caches
+  endpoint:
+    health:
+      show-details: always
+    caches:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+
+# Product Service Specific Configuration
+product:
+  cache:
+    enabled: true
+    ttl: 1800 # 30 minutes in seconds
+    maxSize: 1000
+  validation:
+    nameMinLength: 3
+    nameMaxLength: 100
+    descriptionMinLength: 10
+    descriptionMaxLength: 500
+    minPrice: 0.01

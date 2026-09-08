@@ -1,0 +1,117 @@
+# Inventory Service Configuration
+spring:
+  application:
+    name: inventory-service
+
+  # Database Configuration
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/inventory_service?useSSL=false
+    username: root
+    password: 949195
+
+  # JPA Configuration
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL57Dialect
+    database: MYSQL
+    show-sql: true
+    hibernate:
+      ddl-auto: create-drop
+      # Note: Use 'update' or 'validate' in production
+
+  # Redis Cache Configuration
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 60000
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1ms
+
+  # Cache Configuration
+  cache:
+    type: redis
+    redis:
+      time-to-live: 10000  # 10 seconds TTL for inventory checks
+      cache-null-values: false
+      use-key-prefix: true
+      key-prefix: inventory:
+    cache-names:
+      - inventory
+      - inventory-check
+
+  # Distributed Tracing
+  zipkin:
+    base-url: http://localhost:9411
+  sleuth:
+    sampler:
+      probability: 1.0
+
+# Server Configuration
+server:
+  port: 0  # Dynamic port assignment
+  # Uncomment for fixed port in development
+  # port: 8082
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on_param
+    include-exception: false
+
+# Eureka Client Configuration
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://eureka:password@localhost:8761/eureka/
+    registry-fetch-interval-seconds: 5
+    instance-info-replication-interval-seconds: 5
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+    lease-expiration-duration-in-seconds: 10
+
+# Management Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,caches
+  endpoint:
+    health:
+      show-details: always
+    caches:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    export:
+      prometheus:
+        enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.seshrao.stockxpress.inventoryservice: DEBUG
+    com.seshrao.stockxpress.common: DEBUG
+    org.springframework.web: INFO
+    org.springframework.cache: DEBUG
+    org.springframework.data.redis: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] [%X{userId}] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] [%X{userId}] %-5level %logger{36} - %msg%n"
+
+# Inventory Service Specific Configuration
+inventory:
+  cache:
+    enabled: true
+    ttl: 10 # 10 seconds for real-time inventory
+    maxSize: 1000
+  validation:
+    minQuantity: 0
+    maxQuantity: 10000
