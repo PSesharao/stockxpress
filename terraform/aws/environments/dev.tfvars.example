@@ -1,0 +1,68 @@
+# StockXpress Development Environment Configuration
+# Copy this file to dev.tfvars and update with your actual values
+# NEVER commit actual .tfvars files to version control
+
+# Project Configuration
+project_name = "stockxpress"
+environment  = "dev"
+owner        = "your-team-name"
+cost_center  = "engineering"
+
+# AWS Configuration
+aws_region = "us-east-1"
+
+# Network Configuration
+vpc_cidr             = "10.0.0.0/16"
+availability_zones   = ["us-east-1a", "us-east-1b", "us-east-1c"]
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+private_subnet_cidrs = ["10.0.11.0/24", "10.0.12.0/24", "10.0.13.0/24"]
+
+# EKS Configuration
+eks_cluster_version = "1.28"
+eks_node_groups = {
+  general = {
+    desired_size = 2
+    min_size     = 1
+    max_size     = 4
+    instance_types = ["t3.large"]
+  }
+}
+
+# RDS Configuration
+rds_instance_class    = "db.t3.medium"
+rds_allocated_storage = 20
+mysql_engine_version  = "8.0"
+
+# DocumentDB Configuration
+documentdb_instance_class = "db.t3.medium"
+
+# ElastiCache Configuration
+redis_node_type      = "cache.t3.medium"
+redis_engine_version = "7.0"
+
+# MSK (Kafka) Configuration
+kafka_version             = "3.5.1"
+kafka_broker_instance_type = "kafka.t3.small"
+
+# SECURITY: Database Passwords
+# DO NOT hardcode passwords here!
+# Instead, retrieve them from AWS Secrets Manager using data sources in your Terraform code.
+# See terraform/aws/README.md for detailed instructions.
+#
+# Example data source (add to your main.tf):
+#   data "aws_secretsmanager_secret_version" "rds_order_password" {
+#     secret_id = "stockxpress/dev/rds-order-password"
+#   }
+#
+# Then pass to module:
+#   databases = {
+#     order = {
+#       master_password = data.aws_secretsmanager_secret_version.rds_order_password.secret_string
+#       # ... other config
+#     }
+#   }
+#
+# Create secrets before running Terraform:
+#   aws secretsmanager create-secret \
+#     --name "stockxpress/dev/rds-order-password" \
+#     --secret-string "$(openssl rand -base64 32)"

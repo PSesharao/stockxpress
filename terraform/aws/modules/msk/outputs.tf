@@ -67,11 +67,9 @@ output "scram_username" {
   sensitive   = true
 }
 
-output "scram_password" {
-  description = "SCRAM password"
-  value       = var.enable_scram_authentication ? random_password.scram_password[0].result : null
-  sensitive   = true
-}
+# SECURITY: Password output removed - passwords must never be exposed in Terraform outputs
+# Retrieve SCRAM password from AWS Secrets Manager instead:
+#   aws secretsmanager get-secret-value --secret-id "AmazonMSK_stockxpress_ENV" --query SecretString --output text | jq -r '.password'
 
 output "cloudwatch_log_group_name" {
   description = "CloudWatch log group name for MSK"

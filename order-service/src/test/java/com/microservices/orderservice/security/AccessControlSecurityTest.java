@@ -89,25 +89,26 @@ public class AccessControlSecurityTest {
     }
 
     @Test
-    @DisplayName("POST /api/order - Should return 401 UNAUTHORIZED when expired JWT token provided")
-    void placeOrder_ExpiredToken_Returns401() throws Exception {
-        // Given: A valid order request but EXPIRED authentication token
-        String expiredToken = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0dXNlciIsImV4cCI6MTYwMDAwMDAwMH0.invalid_signature";
-        
-        String orderJson = """{
-            "orderLineItemDtoList": [
-                {
-                    "skuCode": "IPHONE_15_PRO",
-                    "price": 999.99,
-                    "quantity": 1
-                }
-            ]
-        }""";
+    @DisplayName("POST /api/order - Should return 401 UNAUTHORIZED when malformed JWT token provided")
+    void placeOrder_MalformedToken_Returns401() throws Exception {
+        // Given: A valid order request but MALFORMED authentication token
+        // NOTE: Using malformed token structure instead of real JWT to avoid committing reusable token material
+        String malformedToken = "malformed.token.structure";
 
-        // When: Attempting to place order with expired token
+        String orderJson = """{
+                    "orderLineItemDtoList": [
+                        {
+                            "skuCode": "IPHONE_15_PRO",
+                            "price": 999.99,
+                            "quantity": 1
+                        }
+                    ]
+                }""";
+
+        // When: Attempting to place order with malformed token
         // Then: Should receive 401 UNAUTHORIZED
         mockMvc.perform(post("/api/order")
-                        .header("Authorization", "Bearer " + expiredToken)
+                        .header("Authorization", "Bearer " + malformedToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(orderJson))
                 .andExpect(status().isUnauthorized());

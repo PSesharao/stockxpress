@@ -3,14 +3,16 @@
 
 data "aws_partition" "current" {}
 
-# Random password generation for master password
-resource "random_password" "master" {
-  for_each = var.databases
-
-  length  = 32
-  special = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
+# SECURITY: Passwords MUST be managed externally via AWS Secrets Manager
+# DO NOT generate passwords in Terraform code
+# Create secrets before running Terraform:
+#   aws secretsmanager create-secret --name "stockxpress/ENV/rds-DB_NAME-password" \
+#     --secret-string "$(openssl rand -base64 32)"
+#
+# Then retrieve in Terraform using data source:
+#   data "aws_secretsmanager_secret_version" "db_password" {
+#     secret_id = "stockxpress/${var.environment}/rds-${each.key}-password"
+#   }
 
 # KMS Key for RDS encryption
 resource "aws_kms_key" "rds" {
@@ -181,7 +183,11 @@ resource "aws_db_instance" "main" {
 
   db_name  = lookup(each.value, "database_name", each.key)
   username = lookup(each.value, "master_username", var.default_master_username)
-  password = random_password.master[each.key].result
+  # SECURITY: Password MUST be provided via variable from AWS Secrets Manager
+  # Never use random_password or hardcoded values
+  # Use: password = lookup(each.value, "master_password", null)
+  # And provide via: databases = { order = { master_password = data.aws_secretsmanager_secret_version.order.secret_string } }
+  password = lookup(each.value, "master_password", null)
   port     = lookup(each.value, "port", 3306)
 
   allocated_storage     = lookup(each.value, "allocated_storage", var.default_allocated_storage)

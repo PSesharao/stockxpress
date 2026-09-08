@@ -30,11 +30,9 @@ output "port" {
   value       = aws_elasticache_replication_group.redis.port
 }
 
-output "auth_token" {
-  description = "Redis AUTH token"
-  value       = var.auth_token_enabled ? random_password.redis_auth_token.result : null
-  sensitive   = true
-}
+# SECURITY: Auth token output removed - tokens must never be exposed in Terraform outputs
+# Retrieve auth token from AWS Secrets Manager instead:
+#   aws secretsmanager get-secret-value --secret-id "stockxpress/ENV/redis-auth-token" --query SecretString --output text
 
 output "security_group_id" {
   description = "Security group ID for Redis"
@@ -61,16 +59,10 @@ output "cluster_enabled" {
   value       = aws_elasticache_replication_group.redis.cluster_enabled
 }
 
-output "connection_string" {
-  description = "Redis connection string"
-  value = var.auth_token_enabled ? (
-    var.transit_encryption_enabled ?
-    "rediss://:${random_password.redis_auth_token.result}@${aws_elasticache_replication_group.redis.primary_endpoint_address}:${aws_elasticache_replication_group.redis.port}" :
-    "redis://:${random_password.redis_auth_token.result}@${aws_elasticache_replication_group.redis.primary_endpoint_address}:${aws_elasticache_replication_group.redis.port}"
-  ) : (
-    var.transit_encryption_enabled ?
-    "rediss://${aws_elasticache_replication_group.redis.primary_endpoint_address}:${aws_elasticache_replication_group.redis.port}" :
-    "redis://${aws_elasticache_replication_group.redis.primary_endpoint_address}:${aws_elasticache_replication_group.redis.port}"
-  )
-  sensitive = true
-}
+# SECURITY: Connection string output removed - contains embedded auth tokens
+# Build connection strings in your application using:
+#   - Endpoint: from primary_endpoint_address output
+#   - Port: from port output
+#   - Auth Token: from AWS Secrets Manager
+#   - TLS: based on transit_encryption_enabled setting
+# Example: rediss://:${auth_token_from_secrets_manager}@${endpoint}:${port}

@@ -68,6 +68,13 @@ variable "auth_token_enabled" {
   default     = true
 }
 
+variable "redis_auth_token" {
+  description = "Redis AUTH token for authentication. MUST be provided from AWS Secrets Manager. Never hardcode or commit this value."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
 variable "kms_key_id" {
   description = "KMS key ID for encryption at rest"
   type        = string

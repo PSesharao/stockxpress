@@ -38,6 +38,13 @@ variable "master_username" {
   default     = "productadmin"
 }
 
+variable "master_password" {
+  description = "Master password for DocumentDB. MUST be provided from AWS Secrets Manager. Never hardcode or commit this value."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
 variable "engine_version" {
   description = "DocumentDB engine version"
   type        = string

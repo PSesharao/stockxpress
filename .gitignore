@@ -96,3 +96,22 @@ k8s/**/*sealed*.yml
 ### Keycloak ###
 /realms/*.json
 !realms/spring-boot-microservices-realm-template.json
+
+### Terraform (CRITICAL - Never commit state or variable files with secrets!) ###
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/*.tfvars
+!**/*.tfvars.example
+**/override.tf
+**/override.tf.json
+**/*_override.tf
+**/*_override.tf.json
+**/.terraformrc
+**/terraform.rc
+
+### AWS Credentials ###
+**/.aws/
+**/credentials
+**/config

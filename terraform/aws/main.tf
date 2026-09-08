@@ -219,21 +219,20 @@ module "ecr" {
   tags = local.common_tags
 }
 
-# Secrets Manager for sensitive data
-module "secrets_manager" {
-  source = "./modules/secrets"
-  
-  project_name = var.project_name
-  environment  = var.environment
-  
-  # Database passwords
-  rds_order_password      = module.rds.order_db_password
-  rds_inventory_password  = module.rds.inventory_db_password
-  documentdb_password     = module.documentdb.master_password
-  elasticache_auth_token  = module.elasticache.auth_token
-  
-  tags = local.common_tags
-}
+# REMOVED: Secrets Manager module
+# SECURITY REQUIREMENT: All secrets must be managed externally via AWS Secrets Manager Console or CLI
+# DO NOT pass generated passwords between Terraform modules
+#
+# Instead, create secrets manually before running Terraform:
+#   aws secretsmanager create-secret --name stockxpress/dev/rds-order-password --secret-string "your-secure-password"
+#   aws secretsmanager create-secret --name stockxpress/dev/rds-inventory-password --secret-string "your-secure-password"
+#   aws secretsmanager create-secret --name stockxpress/dev/documentdb-password --secret-string "your-secure-password"
+#   aws secretsmanager create-secret --name stockxpress/dev/redis-auth-token --secret-string "your-secure-token"
+#
+# Then reference them in your Terraform using data sources:
+#   data "aws_secretsmanager_secret_version" "rds_order" {
+#     secret_id = "stockxpress/${var.environment}/rds-order-password"
+#   }
 
 # Kubernetes Addons
 module "k8s_addons" {

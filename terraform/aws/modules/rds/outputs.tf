@@ -36,11 +36,9 @@ output "db_instance_usernames" {
   sensitive   = true
 }
 
-output "db_instance_passwords" {
-  description = "Map of master passwords"
-  value       = { for k, v in random_password.master : k => v.result }
-  sensitive   = true
-}
+# SECURITY: Password outputs removed - passwords must never be exposed in Terraform outputs
+# Retrieve passwords from AWS Secrets Manager instead:
+#   aws secretsmanager get-secret-value --secret-id "stockxpress/ENV/rds-DB_NAME-password" --query SecretString --output text
 
 output "db_instance_resource_ids" {
   description = "Map of RDS Resource IDs"
@@ -121,10 +119,10 @@ output "cloudwatch_alarm_ids" {
   } : {}
 }
 
-output "connection_strings" {
-  description = "Map of database connection strings"
-  value = {
-    for k, v in aws_db_instance.main : k => "mysql://${v.username}:${random_password.master[k].result}@${v.endpoint}/${v.db_name}"
-  }
-  sensitive = true
-}
+# SECURITY: Connection string output removed - contains embedded passwords
+# Build connection strings in your application using:
+#   - Endpoint: from db_instance_endpoints output
+#   - Username: from db_instance_usernames output
+#   - Password: from AWS Secrets Manager
+#   - Database: from db_instance_names output
+# Example: mysql://${username}:${password_from_secrets_manager}@${endpoint}/${database}

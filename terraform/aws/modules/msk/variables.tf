@@ -105,6 +105,13 @@ variable "scram_username" {
   default     = "kafka-admin"
 }
 
+variable "scram_secret_arn" {
+  description = "ARN of the existing AWS Secrets Manager secret containing SCRAM credentials. MUST be created externally before running Terraform. Secret format: {\"username\":\"kafka-admin\",\"password\":\"secure-password\"}. Never generate passwords in Terraform."
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
 # Kafka Configuration
 variable "auto_create_topics_enable" {
   description = "Enable auto creation of topics"

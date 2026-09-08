@@ -1,10 +1,9 @@
 # ElastiCache Redis Cluster for Caching
 # Provides managed Redis cache for Inventory Service and other services
 
-resource "random_password" "redis_auth_token" {
-  length  = 32
-  special = false # Redis auth token restrictions
-}
+# SECURITY: Auth token should be managed externally via AWS Secrets Manager
+# DO NOT generate passwords in Terraform - use data source to retrieve from Secrets Manager
+# Example: data "aws_secretsmanager_secret_version" "redis_auth_token" {...}
 
 # Security Group for ElastiCache Redis
 resource "aws_security_group" "redis" {
@@ -122,7 +121,10 @@ resource "aws_elasticache_replication_group" "redis" {
   at_rest_encryption_enabled = true
   transit_encryption_enabled = var.transit_encryption_enabled
   auth_token_enabled         = var.auth_token_enabled
-  auth_token                 = var.auth_token_enabled ? random_password.redis_auth_token.result : null
+  # SECURITY: auth_token must be provided via variable from AWS Secrets Manager
+  # Never hardcode or generate in Terraform. Reference external secret:
+  # auth_token = data.aws_secretsmanager_secret_version.redis_auth.secret_string
+  auth_token                 = var.auth_token_enabled ? var.redis_auth_token : null
   kms_key_id                 = var.kms_key_id
   
   # Backup and maintenance

@@ -1,12 +1,16 @@
 # MSK (Managed Streaming for Kafka) Cluster
 # Provides managed Kafka for event-driven architecture
 
-resource "random_password" "scram_password" {
-  count   = var.enable_scram_authentication ? 1 : 0
-  length  = 32
-  special = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
+# SECURITY: SCRAM passwords MUST be managed externally via AWS Secrets Manager
+# DO NOT generate passwords in Terraform code
+# Create SCRAM secret before running Terraform:
+#   aws secretsmanager create-secret --name "stockxpress/ENV/msk-scram-password" \
+#     --secret-string '{"username":"kafka-admin","password":"'$(openssl rand -base64 32)'"}'
+#
+# Then retrieve in Terraform using data source:
+#   data "aws_secretsmanager_secret_version" "msk_scram" {
+#     secret_id = "stockxpress/${var.environment}/msk-scram-password"
+#   }
 
 # KMS key for encryption
 resource "aws_kms_key" "msk" {
@@ -275,33 +279,27 @@ resource "aws_msk_cluster" "kafka" {
   )
 }
 
-# SCRAM Secret in Secrets Manager
-resource "aws_secretsmanager_secret" "msk_scram" {
-  count       = var.enable_scram_authentication ? 1 : 0
-  name        = "AmazonMSK_${var.project_name}_${var.environment}"
-  description = "SCRAM credentials for MSK cluster"
-  kms_key_id  = var.create_kms_key ? aws_kms_key.msk[0].id : var.kms_key_arn
+# SECURITY: SCRAM secrets MUST be created manually BEFORE running Terraform
+# Terraform should ONLY reference existing secrets, not create them
+#
+# Create SCRAM secret before running Terraform:
+#   aws secretsmanager create-secret \
+#     --name "AmazonMSK_stockxpress_ENV" \
+#     --description "SCRAM credentials for MSK cluster" \
+#     --secret-string '{"username":"kafka-admin","password":"'$(openssl rand -base64 32)'"}' \
+#     --region us-east-1
+#
+# Then attach policy allowing MSK to read it:
+#   aws secretsmanager put-resource-policy \
+#     --secret-id "AmazonMSK_stockxpress_ENV" \
+#     --resource-policy '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"kafka.amazonaws.com"},"Action":"secretsmanager:GetSecretValue","Resource":"*"}]}'
+#
+# Reference the existing secret ARN via variable: var.scram_secret_arn
 
-  tags = merge(
-    var.tags,
-    {
-      Name = "${var.project_name}-${var.environment}-msk-scram"
-    }
-  )
-}
-
-resource "aws_secretsmanager_secret_version" "msk_scram" {
-  count     = var.enable_scram_authentication ? 1 : 0
-  secret_id = aws_secretsmanager_secret.msk_scram[0].id
-  secret_string = jsonencode({
-    username = var.scram_username
-    password = random_password.scram_password[0].result
-  })
-}
-
-resource "aws_secretsmanager_secret_policy" "msk_scram" {
-  count      = var.enable_scram_authentication ? 1 : 0
-  secret_arn = aws_secretsmanager_secret.msk_scram[0].arn
+# Data source to verify secret exists (optional)
+data "aws_secretsmanager_secret" "msk_scram" {
+  count = var.enable_scram_authentication ? 1 : 0
+  arn   = var.scram_secret_arn
 
   policy = jsonencode({
     Version = "2012-10-17"

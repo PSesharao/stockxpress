@@ -1,11 +1,16 @@
 # DocumentDB Cluster for Product Service (MongoDB-compatible)
 # Provides managed MongoDB-compatible database for product catalog
 
-resource "random_password" "documentdb_password" {
-  length  = 32
-  special = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
+# SECURITY: Passwords MUST be managed externally via AWS Secrets Manager
+# DO NOT generate passwords in Terraform code
+# Create secrets before running Terraform:
+#   aws secretsmanager create-secret --name "stockxpress/ENV/documentdb-password" \
+#     --secret-string "$(openssl rand -base64 32)"
+#
+# Then retrieve in Terraform using data source:
+#   data "aws_secretsmanager_secret_version" "documentdb_password" {
+#     secret_id = "stockxpress/${var.environment}/documentdb-password"
+#   }
 
 # Security Group for DocumentDB
 resource "aws_security_group" "documentdb" {
@@ -104,7 +109,10 @@ resource "aws_docdb_cluster" "documentdb" {
   engine                          = "docdb"
   engine_version                  = var.engine_version
   master_username                 = var.master_username
-  master_password                 = random_password.documentdb_password.result
+  # SECURITY: Password MUST be provided via variable from AWS Secrets Manager
+  # Never use random_password or hardcoded values
+  # Provide via: master_password = data.aws_secretsmanager_secret_version.documentdb.secret_string
+  master_password                 = var.master_password
   backup_retention_period         = var.backup_retention_period
   preferred_backup_window         = var.preferred_backup_window
   preferred_maintenance_window    = var.preferred_maintenance_window

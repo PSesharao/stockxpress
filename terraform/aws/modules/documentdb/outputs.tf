@@ -31,11 +31,9 @@ output "master_username" {
   sensitive   = true
 }
 
-output "master_password" {
-  description = "DocumentDB master password"
-  value       = random_password.documentdb_password.result
-  sensitive   = true
-}
+# SECURITY: Password output removed - passwords must never be exposed in Terraform outputs
+# Retrieve password from AWS Secrets Manager instead:
+#   aws secretsmanager get-secret-value --secret-id "stockxpress/ENV/documentdb-password" --query SecretString --output text
 
 output "security_group_id" {
   description = "Security group ID for DocumentDB"
