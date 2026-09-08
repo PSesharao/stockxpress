@@ -97,6 +97,17 @@ jobs:
           reporter: java-junit
           fail-on-error: false
 
+      - name: Enforce code coverage threshold (70% line, 60% branch)
+        run: |
+          cd ${{ matrix.service }}
+          mvn jacoco:check -B
+        continue-on-error: false
+
+      - name: Generate JaCoCo coverage report
+        run: |
+          cd ${{ matrix.service }}
+          mvn jacoco:report -B
+
       - name: Upload test coverage
         if: always()
         uses: actions/upload-artifact@v3
@@ -104,6 +115,17 @@ jobs:
           name: coverage-${{ matrix.service }}
           path: ${{ matrix.service }}/target/site/jacoco/
           retention-days: 7
+
+      - name: Add coverage to PR comment
+        if: github.event_name == 'pull_request'
+        uses: madrapps/jacoco-report@v1.6.1
+        with:
+          paths: ${{ matrix.service }}/target/site/jacoco/jacoco.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 70
+          min-coverage-changed-files: 60
+          title: 'Code Coverage Report - ${{ matrix.service }}'
+          update-comment: true
 
   integration-tests:
     name: Integration Tests

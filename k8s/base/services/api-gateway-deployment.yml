@@ -1,0 +1,183 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  labels:
+    app: api-gateway
+    tier: gateway
+    component: api-routing
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        tier: gateway
+        component: api-routing
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+      - name: api-gateway
+        image: stockxpress/api-gateway:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        env:
+        # Spring Profile
+        - name: SPRING_PROFILES_ACTIVE
+          value: "docker"
+        
+        # Application Name
+        - name: SPRING_APPLICATION_NAME
+          value: "api-gateway"
+        
+        # Server Configuration
+        - name: SERVER_PORT
+          value: "8080"
+        
+        # Eureka Client Configuration
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: eureka-config
+              key: eureka.url
+        - name: EUREKA_INSTANCE_PREFER_IP_ADDRESS
+          value: "true"
+        - name: EUREKA_INSTANCE_LEASE_RENEWAL_INTERVAL_IN_SECONDS
+          value: "5"
+        - name: EUREKA_INSTANCE_LEASE_EXPIRATION_DURATION_IN_SECONDS
+          value: "10"
+        
+        # OAuth2 Resource Server Configuration (from ConfigMap)
+        - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
+          valueFrom:
+            configMapKeyRef:
+              name: keycloak-config
+              key: issuer.uri
+        
+        # Gateway Routes Configuration
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_0_ID
+          value: "product-service"
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_0_URI
+          value: "lb://product-service"
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0
+          value: "Path=/api/product"
+        
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_1_ID
+          value: "order-service"
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_1_URI
+          value: "lb://order-service"
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0
+          value: "Path=/api/order"
+        
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_2_ID
+          value: "inventory-service"
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_2_URI
+          value: "lb://inventory-service"
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0
+          value: "Path=/api/inventory"
+        
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_3_ID
+          value: "discovery-server"
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_3_URI
+          value: "http://discovery-server:8761"
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_3_PREDICATES_0
+          value: "Path=/eureka/web"
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_3_FILTERS_0
+          value: "SetPath=/"
+        
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_4_ID
+          value: "discovery-server-static"
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_4_URI
+          value: "http://discovery-server:8761"
+        - name: SPRING_CLOUD_GATEWAY_ROUTES_4_PREDICATES_0
+          value: "Path=/eureka/**"
+        
+        # Zipkin Configuration
+        - name: SPRING_ZIPKIN_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: tracing-config
+              key: zipkin.url
+        - name: SPRING_SLEUTH_SAMPLER_PROBABILITY
+          value: "1.0"
+        
+        # Logging Configuration
+        - name: LOGGING_LEVEL_ROOT
+          value: "INFO"
+        - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_GATEWAY
+          value: "INFO"
+        
+        # JVM Options
+        - name: JAVA_OPTS
+          value: "-Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+        
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 40
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 30
+      
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      
+      # Wait for discovery-server to be ready
+      initContainers:
+      - name: wait-for-discovery
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z discovery-server 8761; do echo waiting for discovery-server; sleep 2; done;']
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi

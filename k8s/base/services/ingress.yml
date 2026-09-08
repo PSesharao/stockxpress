@@ -1,0 +1,143 @@
+# API Gateway Ingress
+# Exposes the API Gateway to external traffic
+# Install NGINX Ingress Controller first:
+#   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stockxpress-ingress
+  namespace: stockxpress
+  labels:
+    app: stockxpress
+    component: ingress
+  annotations:
+    # NGINX Ingress Controller annotations
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+    
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    
+    # CORS (if needed)
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://stockxpress.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+    
+    # Client body size (for large payloads)
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    
+    # SSL/TLS (cert-manager integration)
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    
+    # WAF (if using ModSecurity)
+    nginx.ingress.kubernetes.io/enable-modsecurity: "true"
+    nginx.ingress.kubernetes.io/enable-owasp-core-rules: "true"
+    
+    # Sticky sessions (if needed for stateful apps)
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "stockxpress-session"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+spec:
+  ingressClassName: nginx
+  
+  # TLS configuration
+  tls:
+    - hosts:
+        - api.stockxpress.com
+        - www.stockxpress.com
+      secretName: stockxpress-tls-cert
+  
+  # Routing rules
+  rules:
+    # Main API endpoint
+    - host: api.stockxpress.com
+      http:
+        paths:
+          # API Gateway - routes to all services
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway-service
+                port:
+                  number: 8080
+    
+    # Alternative: www subdomain redirects to api
+    - host: www.stockxpress.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway-service
+                port:
+                  number: 8080
+---
+# Ingress for Observability Endpoints (Internal only)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stockxpress-observability-ingress
+  namespace: stockxpress
+  labels:
+    app: stockxpress
+    component: observability
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: observability-basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Authentication Required - StockXpress Observability"
+spec:
+  ingressClassName: nginx
+  
+  tls:
+    - hosts:
+        - observability.stockxpress.internal
+      secretName: stockxpress-internal-tls
+  
+  rules:
+    - host: observability.stockxpress.internal
+      http:
+        paths:
+          # Prometheus
+          - path: /prometheus
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus-service
+                port:
+                  number: 9090
+          
+          # Grafana
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana-service
+                port:
+                  number: 3000
+          
+          # Zipkin
+          - path: /zipkin
+            pathType: Prefix
+            backend:
+              service:
+                name: zipkin-service
+                port:
+                  number: 9411
+---
+# Basic Auth Secret for Observability (create with kubectl)
+# kubectl create secret generic observability-basic-auth \
+#   --from-literal=auth=$(htpasswd -nb admin 'your-password') \
+#   -n stockxpress

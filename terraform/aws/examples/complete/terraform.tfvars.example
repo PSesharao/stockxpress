@@ -1,0 +1,90 @@
+# Example Terraform Variables
+# Copy this file to terraform.tfvars and customize values
+
+# General Configuration
+aws_region   = "us-east-1"
+project_name = "stockxpress"
+environment  = "production"
+
+common_tags = {
+  Terraform   = "true"
+  Environment = "production"
+  Project     = "stockxpress"
+  ManagedBy   = "platform-team"
+  CostCenter  = "engineering"
+}
+
+# VPC Configuration
+vpc_cidr           = "10.0.0.0/16"
+az_count           = 3
+enable_nat_gateway = true
+single_nat_gateway = false  # Set to true for dev/test to save costs
+enable_vpc_flow_logs = true
+vpc_flow_logs_retention_days = 7
+
+# EKS Configuration
+eks_cluster_version              = "1.28"
+eks_endpoint_private_access      = true
+eks_endpoint_public_access       = true
+eks_endpoint_public_access_cidrs = ["0.0.0.0/0"]  # Restrict in production
+eks_enabled_log_types            = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+enable_ebs_csi_driver            = true
+
+# EKS Node Groups
+eks_node_groups = {
+  # General purpose node group
+  general = {
+    desired_size   = 3
+    min_size       = 2
+    max_size       = 6
+    instance_types = ["t3.large"]
+    capacity_type  = "ON_DEMAND"
+    disk_size      = 50
+    labels = {
+      role        = "general"
+      environment = "production"
+    }
+  }
+
+  # Spot instance node group for cost optimization
+  spot = {
+    desired_size   = 2
+    min_size       = 1
+    max_size       = 10
+    instance_types = ["t3.large", "t3a.large", "t2.large"]
+    capacity_type  = "SPOT"
+    disk_size      = 50
+    labels = {
+      role        = "spot"
+      environment = "production"
+    }
+    taints = [
+      {
+        key    = "spot"
+        value  = "true"
+        effect = "NoSchedule"
+      }
+    ]
+  }
+}
+
+# RDS Configuration
+rds_order_instance_class      = "db.r6g.xlarge"
+rds_order_allocated_storage   = 200
+rds_order_max_allocated_storage = 1000
+
+rds_inventory_instance_class      = "db.r6g.large"
+rds_inventory_allocated_storage   = 100
+rds_inventory_max_allocated_storage = 500
+
+rds_multi_az                   = true
+rds_backup_retention_period    = 14  # 2 weeks
+rds_deletion_protection        = true
+rds_performance_insights_enabled = true
+
+# Monitoring and Alerting
+enable_rds_cloudwatch_alarms           = true
+store_db_passwords_in_secrets_manager = true
+
+create_sns_topic_for_alarms = true
+alert_email                 = "devops@example.com"

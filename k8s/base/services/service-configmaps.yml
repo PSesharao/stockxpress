@@ -1,0 +1,54 @@
+---
+# Eureka Server Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eureka-config
+  labels:
+    app: stockxpress
+    component: configuration
+data:
+  eureka.url: "http://eureka:password@discovery-server:8761/eureka"
+  eureka.hostname: "discovery-server"
+  eureka.port: "8761"
+
+---
+# MongoDB Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-config
+  labels:
+    app: stockxpress
+    component: configuration
+data:
+  mongodb.host: "mongodb"
+  mongodb.port: "27017"
+  mongodb.database.product: "product-service"
+  mongodb.database.notification: "notification-service"
+
+---
+# Keycloak OAuth2 Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-config
+  labels:
+    app: stockxpress
+    component: configuration
+data:
+  issuer.uri: "http://keycloak:8080/realms/stockxpress"
+  realm: "stockxpress"
+
+---
+# Distributed Tracing Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tracing-config
+  labels:
+    app: stockxpress
+    component: configuration
+data:
+  zipkin.url: "http://zipkin:9411"
+  sleuth.probability: "1.0"

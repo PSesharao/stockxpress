@@ -1,0 +1,114 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discovery-server
+  labels:
+    app: discovery-server
+    tier: infrastructure
+    component: service-discovery
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discovery-server
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: discovery-server
+        tier: infrastructure
+        component: service-discovery
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8761"
+        prometheus.io/path: "/actuator/prometheus"
+    spec:
+      containers:
+      - name: discovery-server
+        image: stockxpress/discovery-server:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8761
+          protocol: TCP
+        env:
+        # Spring Profile
+        - name: SPRING_PROFILES_ACTIVE
+          value: "docker"
+        
+        # Eureka Credentials (from Secret)
+        - name: EUREKA_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: eureka-credentials
+              key: username
+        - name: EUREKA_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eureka-credentials
+              key: password
+        
+        # Zipkin Configuration (from ConfigMap)
+        - name: SPRING_ZIPKIN_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: tracing-config
+              key: zipkin.url
+        - name: SPRING_SLEUTH_SAMPLER_PROBABILITY
+          value: "1.0"
+        
+        # Server Configuration
+        - name: SERVER_PORT
+          value: "8761"
+        
+        # JVM Options
+        - name: JAVA_OPTS
+          value: "-Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+        
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8761
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8761
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8761
+            scheme: HTTP
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 30
+      
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30

@@ -1,0 +1,244 @@
+# Network Policies for StockXpress
+# Implements defense-in-depth by restricting network traffic between pods
+---
+# Default Deny All Ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: stockxpress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Allow API Gateway to receive traffic from Ingress Controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-gateway-ingress
+  namespace: stockxpress
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes:
+    - Ingress
+  ingress:
+    # From NGINX Ingress Controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+# Allow API Gateway to call backend services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-services-from-gateway
+  namespace: stockxpress
+spec:
+  podSelector:
+    matchLabels:
+      tier: backend
+  policyTypes:
+    - Ingress
+  ingress:
+    # From API Gateway
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api-gateway
+      ports:
+        - protocol: TCP
+          port: 8081  # Product
+        - protocol: TCP
+          port: 8082  # Inventory
+        - protocol: TCP
+          port: 8083  # Order
+        - protocol: TCP
+          port: 8084  # Notification
+---
+# Allow all services to register with Discovery Server
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: discovery-server-ingress
+  namespace: stockxpress
+spec:
+  podSelector:
+    matchLabels:
+      app: discovery-server
+  policyTypes:
+    - Ingress
+  ingress:
+    # From all StockXpress services
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: stockxpress
+      ports:
+        - protocol: TCP
+          port: 8761
+---
+# Allow services to access MySQL Order database
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mysql-order-access
+  namespace: stockxpress
+spec:
+  podSelector:
+    matchLabels:
+      app: mysql-order
+  policyTypes:
+    - Ingress
+  ingress:
+    # Only from Order Service
+    - from:
+        - podSelector:
+            matchLabels:
+              app: order-service
+      ports:
+        - protocol: TCP
+          port: 3306
+---
+# Allow services to access MySQL Inventory database
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mysql-inventory-access
+  namespace: stockxpress
+spec:
+  podSelector:
+    matchLabels:
+      app: mysql-inventory
+  policyTypes:
+    - Ingress
+  ingress:
+    # Only from Inventory Service
+    - from:
+        - podSelector:
+            matchLabels:
+              app: inventory-service
+      ports:
+        - protocol: TCP
+          port: 3306
+---
+# Allow services to access MongoDB
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mongodb-access
+  namespace: stockxpress
+spec:
+  podSelector:
+    matchLabels:
+      app: mongodb
+  policyTypes:
+    - Ingress
+  ingress:
+    # From Product Service and Notification Service
+    - from:
+        - podSelector:
+            matchLabels:
+              app: product-service
+        - podSelector:
+            matchLabels:
+              app: notification-service
+      ports:
+        - protocol: TCP
+          port: 27017
+---
+# Allow services to access Redis
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-access
+  namespace: stockxpress
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+    - Ingress
+  ingress:
+    # From Inventory Service (caching)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: inventory-service
+      ports:
+        - protocol: TCP
+          port: 6379
+---
+# Allow services to access Kafka
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kafka-access
+  namespace: stockxpress
+spec:
+  podSelector:
+    matchLabels:
+      app: kafka
+  policyTypes:
+    - Ingress
+  ingress:
+    # From Order Service (producer) and Notification Service (consumer)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: order-service
+        - podSelector:
+            matchLabels:
+              app: notification-service
+      ports:
+        - protocol: TCP
+          port: 9092
+---
+# Allow Prometheus to scrape all services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: prometheus-scraping
+  namespace: stockxpress
+spec:
+  podSelector:
+    matchLabels:
+      prometheus: scrape
+  policyTypes:
+    - Ingress
+  ingress:
+    # From Prometheus
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080  # Gateway
+        - protocol: TCP
+          port: 8081  # Product
+        - protocol: TCP
+          port: 8082  # Inventory
+        - protocol: TCP
+          port: 8083  # Order
+        - protocol: TCP
+          port: 8084  # Notification
+---
+# Allow all egress (services can reach internet, DNS, etc.)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-all-egress
+  namespace: stockxpress
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - {}  # Allow all outbound traffic

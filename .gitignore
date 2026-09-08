@@ -87,6 +87,12 @@ build/
 *.p12
 *.jks
 
+### Kubernetes Secrets (CRITICAL - Never commit actual secrets!) ###
+k8s/**/mysql-secrets.yml
+k8s/**/*-secrets.yml
+!k8s/**/*-secrets.yml.template
+k8s/**/*sealed*.yml
+
 ### Keycloak ###
 /realms/*.json
 !realms/spring-boot-microservices-realm-template.json
