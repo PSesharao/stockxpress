@@ -1,0 +1,145 @@
+# Kafka Consumer Lag Alert Rules
+
+groups:
+  - name: kafka_consumer_lag
+    interval: 30s
+    rules:
+      # High Consumer Lag Alert
+      - alert: HighKafkaConsumerLag
+        expr: |
+          kafka_consumer_lag{job=~".*-service"} > 1000
+        for: 5m
+        labels:
+          severity: critical
+          category: kafka
+        annotations:
+          summary: "High Kafka consumer lag on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has {{ $value }} messages lag on topic {{ $labels.topic }} partition {{ $labels.partition }} (threshold: 1000)"
+          dashboard: "http://grafana:3000/d/kafka/kafka-consumer-dashboard?var-service={{ $labels.service }}"
+
+      # Consumer Lag Warning
+      - alert: KafkaConsumerLagWarning
+        expr: |
+          kafka_consumer_lag{job=~".*-service"} > 500
+        for: 10m
+        labels:
+          severity: warning
+          category: kafka
+        annotations:
+          summary: "Kafka consumer lag increasing on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has {{ $value }} messages lag on topic {{ $labels.topic }} partition {{ $labels.partition }} (threshold: 500)"
+          dashboard: "http://grafana:3000/d/kafka/kafka-consumer-dashboard?var-service={{ $labels.service }}"
+
+      # Consumer Lag Growing Rapidly
+      - alert: KafkaConsumerLagGrowing
+        expr: |
+          (
+            kafka_consumer_lag
+            -
+            kafka_consumer_lag offset 5m ago
+          ) > 500
+        for: 5m
+        labels:
+          severity: warning
+          category: kafka
+        annotations:
+          summary: "Kafka consumer lag growing rapidly on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} lag on topic {{ $labels.topic }} has increased by {{ $value }} messages in 5 minutes"
+          dashboard: "http://grafana:3000/d/kafka/kafka-consumer-dashboard?var-service={{ $labels.service }}"
+
+      # Consumer Not Consuming
+      - alert: KafkaConsumerNotConsuming
+        expr: |
+          rate(kafka_consumer_records_consumed_total[5m]) == 0
+          and
+          kafka_consumer_lag > 0
+        for: 5m
+        labels:
+          severity: critical
+          category: kafka
+        annotations:
+          summary: "Kafka consumer stopped consuming on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} is not consuming messages from topic {{ $labels.topic }} but has lag"
+          dashboard: "http://grafana:3000/d/kafka/kafka-consumer-dashboard?var-service={{ $labels.service }}"
+
+      # High Consumer Fetch Errors
+      - alert: HighKafkaConsumerFetchErrors
+        expr: |
+          rate(kafka_consumer_fetch_manager_fetch_total{result="error"}[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          category: kafka
+        annotations:
+          summary: "High Kafka consumer fetch errors on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} is experiencing {{ $value }} fetch errors/sec on topic {{ $labels.topic }}"
+          dashboard: "http://grafana:3000/d/kafka/kafka-consumer-dashboard?var-service={{ $labels.service }}"
+
+      # Consumer Group Rebalancing
+      - alert: KafkaConsumerGroupRebalancing
+        expr: |
+          rate(kafka_consumer_coordinator_rebalance_total[5m]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          category: kafka
+        annotations:
+          summary: "Frequent Kafka consumer group rebalancing on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} consumer group {{ $labels.group }} is rebalancing frequently"
+          dashboard: "http://grafana:3000/d/kafka/kafka-consumer-dashboard?var-service={{ $labels.service }}"
+
+      # Notification Service Lag (Order Events)
+      - alert: NotificationServiceOrderEventsLag
+        expr: |
+          kafka_consumer_lag{service="notification-service",topic="order-events"} > 1000
+        for: 3m
+        labels:
+          severity: critical
+          category: kafka
+          service: notification-service
+        annotations:
+          summary: "Notification service has high lag on order-events topic"
+          description: "Notification service has {{ $value }} messages lag on order-events - notifications may be delayed"
+          dashboard: "http://grafana:3000/d/kafka/kafka-consumer-dashboard?var-service=notification-service"
+
+      # Order Service Lag (Inventory Events)
+      - alert: OrderServiceInventoryEventsLag
+        expr: |
+          kafka_consumer_lag{service="order-service",topic="inventory-events"} > 500
+        for: 5m
+        labels:
+          severity: warning
+          category: kafka
+          service: order-service
+        annotations:
+          summary: "Order service has lag on inventory-events topic"
+          description: "Order service has {{ $value }} messages lag on inventory-events - order processing may be delayed"
+          dashboard: "http://grafana:3000/d/kafka/kafka-consumer-dashboard?var-service=order-service"
+
+      # Consumer Processing Rate Low
+      - alert: LowKafkaConsumerProcessingRate
+        expr: |
+          rate(kafka_consumer_records_consumed_total[5m]) < 1
+          and
+          kafka_consumer_lag > 100
+        for: 10m
+        labels:
+          severity: warning
+          category: kafka
+        annotations:
+          summary: "Low Kafka consumer processing rate on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} is consuming at {{ $value }} msgs/sec while having lag - consumer may be slow"
+          dashboard: "http://grafana:3000/d/kafka/kafka-consumer-dashboard?var-service={{ $labels.service }}"
+
+      # Consumer Record Processing Errors
+      - alert: HighKafkaConsumerProcessingErrors
+        expr: |
+          rate(kafka_consumer_processing_errors_total[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: critical
+          category: kafka
+        annotations:
+          summary: "High Kafka message processing errors on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} is experiencing {{ $value }} processing errors/sec on topic {{ $labels.topic }}"
+          dashboard: "http://grafana:3000/d/kafka/kafka-consumer-dashboard?var-service={{ $labels.service }}"

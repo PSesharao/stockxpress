@@ -40,7 +40,53 @@ build/
 ### Mac OS ###
 .DS_Store
 
+### Database Data Directories ###
 /postgres/
 /postgres-inventory/
 /postgres-order/
+/mysql-order/
+/mysql-inventory/
+/mysql-keycloak/
+/mongo-data/
+
+### Observability Data ###
 /grafana/
+/prometheus-data/
+/zipkin-data/
+
+### Docker Volumes ###
+/redis-data/
+/kafka-data/
+/zookeeper-data/
+
+### Environment Files (CRITICAL - Never commit secrets!) ###
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+
+### Backup Files ###
+/backups/
+*.sql
+*.dump
+*.rdb
+*.archive
+
+### Logs ###
+/logs/
+*.log
+*.log.*
+
+### Security ###
+/certs/
+/secrets/
+*.key
+*.pem
+*.crt
+*.p12
+*.jks
+
+### Keycloak ###
+/realms/*.json
+!realms/spring-boot-microservices-realm-template.json

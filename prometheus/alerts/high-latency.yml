@@ -1,0 +1,97 @@
+# High Latency Alert Rules
+
+groups:
+  - name: high_latency
+    interval: 30s
+    rules:
+      # P95 Latency Alert
+      - alert: HighP95Latency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_server_requests_seconds_bucket[5m])) by (service, job, le)
+          ) > 3
+        for: 5m
+        labels:
+          severity: critical
+          category: latency
+        annotations:
+          summary: "High P95 latency on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} P95 latency is {{ $value | humanize }}s (threshold: 3s)"
+          dashboard: "http://grafana:3000/d/microservices/service-dashboard?var-service={{ $labels.service }}"
+
+      # P99 Latency Alert
+      - alert: HighP99Latency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_server_requests_seconds_bucket[5m])) by (service, job, le)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          category: latency
+        annotations:
+          summary: "High P99 latency on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} P99 latency is {{ $value | humanize }}s (threshold: 5s)"
+          dashboard: "http://grafana:3000/d/microservices/service-dashboard?var-service={{ $labels.service }}"
+
+      # Average Response Time Alert
+      - alert: HighAverageResponseTime
+        expr: |
+          sum(rate(http_server_requests_seconds_sum[5m])) by (service, job)
+          /
+          sum(rate(http_server_requests_seconds_count[5m])) by (service, job)
+          > 2
+        for: 10m
+        labels:
+          severity: warning
+          category: latency
+        annotations:
+          summary: "High average response time on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} average response time is {{ $value | humanize }}s (threshold: 2s)"
+          dashboard: "http://grafana:3000/d/microservices/service-dashboard?var-service={{ $labels.service }}"
+
+      # Database Query Latency
+      - alert: HighDatabaseQueryLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(spring_data_repository_invocations_seconds_bucket[5m])) by (service, job, le)
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          category: latency
+        annotations:
+          summary: "High database query latency on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} database P95 query latency is {{ $value | humanize }}s (threshold: 1s)"
+          dashboard: "http://grafana:3000/d/microservices/service-dashboard?var-service={{ $labels.service }}"
+
+      # API Gateway Route Latency
+      - alert: APIGatewayHighRouteLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(spring_cloud_gateway_requests_seconds_bucket[5m])) by (service, routeId, le)
+          ) > 3
+        for: 5m
+        labels:
+          severity: critical
+          category: latency
+          service: api-gateway
+        annotations:
+          summary: "High latency on API Gateway route {{ $labels.routeId }}"
+          description: "Route {{ $labels.routeId }} P95 latency is {{ $value | humanize }}s (threshold: 3s)"
+          dashboard: "http://grafana:3000/d/api-gateway/api-gateway-dashboard"
+
+      # Kafka Message Processing Latency
+      - alert: HighKafkaProcessingLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(kafka_consumer_processing_duration_seconds_bucket[5m])) by (service, topic, le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: latency
+        annotations:
+          summary: "High Kafka message processing latency on {{ $labels.service }}"
+          description: "Service {{ $labels.service }} Kafka processing P95 latency for topic {{ $labels.topic }} is {{ $value | humanize }}s (threshold: 2s)"
+          dashboard: "http://grafana:3000/d/kafka/kafka-consumer-dashboard"
