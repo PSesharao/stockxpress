@@ -1,0 +1,319 @@
+openapi: 3.0.3
+info:
+  title: StockXpress Product Service API
+  description: |
+    Product Catalog API for StockXpress e-commerce platform.
+    Manages product information, categories, pricing, and inventory levels.
+    
+    **Business Context:**
+    - Customers browse products by category
+    - Operators manage product catalog (create, update, delete)
+    - Real-time stock levels synchronized with Inventory Service
+  version: 1.0.0
+  contact:
+    name: StockXpress Platform Team
+    email: platform@stockxpress.com
+servers:
+  - url: http://localhost:8080/api
+    description: API Gateway (local)
+  - url: https://api.stockxpress.com/api
+    description: Production API Gateway
+tags:
+  - name: Products
+    description: Product catalog operations
+  - name: Health
+    description: Service health and monitoring
+
+paths:
+  /product:
+    get:
+      tags:
+        - Products
+      summary: Get all products
+      description: |
+        Retrieves all products from the catalog.
+        
+        **Business Scenario:** Customer browses product catalog
+        **Actor:** Customer, Operator
+        **Authorization:** Public access (no JWT required)
+      operationId: getAllProducts
+      responses:
+        '200':
+          description: List of products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+              example:
+                - id: "66f9c123456789abcdef0001"
+                  name: "iPhone 15 Pro"
+                  description: "Latest flagship smartphone"
+                  price: 999.99
+                  category: "Electronics"
+                  skuCode: "IPHONE_15_PRO"
+                  stockQuantity: 50
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      tags:
+        - Products
+      summary: Create a new product
+      description: |
+        Creates a new product in the catalog.
+        
+        **Business Scenario:** Operator adds new product to catalog
+        **Actor:** Operator
+        **Authorization:** Requires JWT with ROLE_ADMIN
+      operationId: createProduct
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+            example:
+              name: "Samsung Galaxy S24"
+              description: "Premium Android smartphone"
+              price: 899.99
+              category: "Electronics"
+              skuCode: "SAMSUNG_S24"
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Missing or invalid JWT token
+        '403':
+          description: Forbidden - Insufficient permissions
+
+  /product/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get product by ID
+      description: |
+        Retrieves a single product by its MongoDB ObjectId.
+        
+        **Business Scenario:** Customer views product details
+        **Actor:** Customer, Operator
+        **Authorization:** Public access
+      operationId: getProductById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: MongoDB ObjectId of the product
+          schema:
+            type: string
+            pattern: '^[0-9a-fA-F]{24}$'
+          example: "66f9c123456789abcdef0001"
+      responses:
+        '200':
+          description: Product found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      tags:
+        - Products
+      summary: Update product
+      description: |
+        Updates an existing product.
+        
+        **Business Scenario:** Operator updates product information or pricing
+        **Actor:** Operator
+        **Authorization:** Requires JWT with ROLE_ADMIN
+      operationId: updateProduct
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductRequest'
+      responses:
+        '200':
+          description: Product updated successfully
+        '404':
+          description: Product not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+    
+    delete:
+      tags:
+        - Products
+      summary: Delete product
+      description: |
+        Deletes a product from the catalog.
+        
+        **Business Scenario:** Operator removes discontinued product
+        **Actor:** Operator
+        **Authorization:** Requires JWT with ROLE_ADMIN
+      operationId: deleteProduct
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Product deleted successfully
+        '404':
+          description: Product not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /actuator/health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Returns service health status
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from Keycloak.
+        
+        **To obtain token:**
+        ```bash
+        curl -X POST http://localhost:8181/realms/spring-boot-microservices-realm/protocol/openid-connect/token \
+          -d "username=testuser" \
+          -d "password=password123" \
+          -d "grant_type=password" \
+          -d "client_id=spring-cloud-client"
+        ```
+  
+  schemas:
+    Product:
+      type: object
+      required:
+        - id
+        - name
+        - price
+        - skuCode
+      properties:
+        id:
+          type: string
+          description: MongoDB ObjectId
+          example: "66f9c123456789abcdef0001"
+        name:
+          type: string
+          description: Product name
+          example: "iPhone 15 Pro"
+        description:
+          type: string
+          description: Product description
+          example: "Latest flagship smartphone with A17 Pro chip"
+        price:
+          type: number
+          format: double
+          description: Product price in USD
+          example: 999.99
+        category:
+          type: string
+          description: Product category
+          example: "Electronics"
+        skuCode:
+          type: string
+          description: Stock Keeping Unit code (must match Inventory Service)
+          example: "IPHONE_15_PRO"
+        stockQuantity:
+          type: integer
+          description: Current stock level (synced from Inventory Service)
+          example: 50
+    
+    ProductRequest:
+      type: object
+      required:
+        - name
+        - price
+        - skuCode
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        price:
+          type: number
+          format: double
+          minimum: 0.01
+        category:
+          type: string
+        skuCode:
+          type: string
+          pattern: '^[A-Z0-9_]+$'
+    
+    Error:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string

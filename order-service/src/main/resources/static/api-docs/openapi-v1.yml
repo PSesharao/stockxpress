@@ -1,0 +1,282 @@
+openapi: 3.0.3
+info:
+  title: StockXpress Order Service API
+  description: |
+    Order Management API for StockXpress e-commerce platform.
+    Handles order placement, tracking, and event publishing.
+    
+    **Business Context:**
+    - Customers place orders for products
+    - System validates stock availability before confirming orders
+    - Order events published to Kafka for downstream processing
+    - Notifications triggered asynchronously via event-driven architecture
+    
+    **Integration Points:**
+    - Calls Inventory Service to check stock (Circuit Breaker: 5s timeout, 50% failure threshold)
+    - Publishes OrderPlacedEvent to Kafka topic `order-placed`
+    - Notification Service consumes events and sends emails
+  version: 1.0.0
+  contact:
+    name: StockXpress Platform Team
+    email: platform@stockxpress.com
+servers:
+  - url: http://localhost:8080/api
+    description: API Gateway (local)
+  - url: https://api.stockxpress.com/api
+    description: Production API Gateway
+tags:
+  - name: Orders
+    description: Order management operations
+  - name: Health
+    description: Service health and monitoring
+
+paths:
+  /order:
+    post:
+      tags:
+        - Orders
+      summary: Place a new order
+      description: |
+        Creates a new order with stock validation and event publishing.
+        
+        **Business Scenario:** Customer places order for product
+        **Actor:** Customer
+        **Authorization:** Requires JWT with ROLE_USER
+        
+        **Flow:**
+        1. Validate JWT token and extract user ID
+        2. Call Inventory Service to check stock availability
+        3. If stock available → Create order, publish OrderPlacedEvent to Kafka
+        4. If stock unavailable → Return 400 Bad Request
+        5. Notification Service consumes event and sends confirmation email
+        
+        **Event Published:**
+        - Topic: `order-placed`
+        - Schema: OrderPlacedEvent (see components/schemas)
+        - Consumer: Notification Service
+      operationId: placeOrder
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderRequest'
+            example:
+              skuCode: "IPHONE_15_PRO"
+              price: 999.99
+              quantity: 1
+              userDetails:
+                email: "customer@example.com"
+                firstName: "John"
+                lastName: "Doe"
+      responses:
+        '201':
+          description: Order placed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+              example:
+                message: "Order Placed Successfully"
+                orderId: 12345
+                orderNumber: "ORD-20260908-001"
+                status: "CONFIRMED"
+        '400':
+          description: |
+            Order validation failed:
+            - Product out of stock
+            - Invalid SKU code
+            - Invalid quantity (must be > 0)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                timestamp: "2026-09-08T10:30:00Z"
+                status: 400
+                error: "Bad Request"
+                message: "Product with SkuCode IPHONE_15_PRO is not in stock"
+                path: "/api/order"
+        '401':
+          description: Unauthorized - Missing or invalid JWT token
+        '403':
+          description: Forbidden - User does not have ROLE_USER
+        '503':
+          description: |
+            Service unavailable:
+            - Inventory Service circuit breaker OPEN
+            - Kafka broker unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                timestamp: "2026-09-08T10:30:00Z"
+                status: 503
+                error: "Service Unavailable"
+                message: "Inventory service is currently unavailable. Please try again later."
+                path: "/api/order"
+
+  /actuator/health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+                  components:
+                    type: object
+                    properties:
+                      db:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: UP
+                      circuitBreakers:
+                        type: object
+                        properties:
+                          inventory:
+                            type: object
+                            properties:
+                              status:
+                                type: string
+                                example: CLOSED
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token obtained from Keycloak with ROLE_USER.
+        
+        **Test User Credentials:**
+        - Username: testuser
+        - Password: password123
+        - Roles: ROLE_USER
+  
+  schemas:
+    OrderRequest:
+      type: object
+      required:
+        - skuCode
+        - price
+        - quantity
+      properties:
+        skuCode:
+          type: string
+          description: Product SKU code (must exist in Inventory)
+          pattern: '^[A-Z0-9_]+$'
+          example: "IPHONE_15_PRO"
+        price:
+          type: number
+          format: double
+          minimum: 0.01
+          description: Unit price in USD
+          example: 999.99
+        quantity:
+          type: integer
+          minimum: 1
+          description: Number of units to order
+          example: 1
+        userDetails:
+          $ref: '#/components/schemas/UserDetails'
+    
+    UserDetails:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "customer@example.com"
+        firstName:
+          type: string
+          example: "John"
+        lastName:
+          type: string
+          example: "Doe"
+    
+    OrderResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Order Placed Successfully"
+        orderId:
+          type: integer
+          format: int64
+          example: 12345
+        orderNumber:
+          type: string
+          description: Human-readable order number
+          example: "ORD-20260908-001"
+        status:
+          type: string
+          enum: [CONFIRMED, PENDING, FAILED]
+          example: "CONFIRMED"
+    
+    OrderPlacedEvent:
+      type: object
+      description: |
+        Event published to Kafka topic `order-placed` when order is successfully created.
+        
+        **Kafka Topic:** order-placed
+        **Consumer:** Notification Service
+        **Purpose:** Trigger order confirmation email
+      required:
+        - orderNumber
+        - email
+      properties:
+        orderNumber:
+          type: string
+          example: "ORD-20260908-001"
+        email:
+          type: string
+          format: email
+          description: Customer email for notification
+          example: "customer@example.com"
+        firstName:
+          type: string
+          example: "John"
+        lastName:
+          type: string
+          example: "Doe"
+        productName:
+          type: string
+          example: "iPhone 15 Pro"
+        quantity:
+          type: integer
+          example: 1
+        totalAmount:
+          type: number
+          format: double
+          example: 999.99
+    
+    Error:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string

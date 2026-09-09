@@ -18,7 +18,8 @@ public class InventoryMapper {
 
     /**
      * Convert Inventory entity to InventoryResponse DTO.
-     * 
+     * Uses domain business logic methods for stock availability.
+     *
      * @param inventory Inventory entity
      * @return InventoryResponse DTO with stock availability information
      */
@@ -26,11 +27,11 @@ public class InventoryMapper {
         if (inventory == null) {
             return null;
         }
-        
+
         return InventoryResponse.builder()
                 .skuCode(inventory.getSkuCode())
-                .isInStock(inventory.getQuantity() != null && inventory.getQuantity() > 0)
-                .availableQuantity(inventory.getQuantity())
+                .isInStock(inventory.isInStock()) // Use domain method
+                .availableQuantity(inventory.getAvailableQuantity()) // Use domain method
                 .build();
     }
 
@@ -52,19 +53,20 @@ public class InventoryMapper {
 
     /**
      * Convert InventoryResponse DTO to Inventory entity.
-     * Used for creating or updating inventory records.
-     * 
+     * Uses domain factory method to ensure business validation.
+     *
      * @param response InventoryResponse DTO
-     * @return Inventory entity
+     * @return Inventory entity with business validation enforced
      */
     public Inventory toInventory(InventoryResponse response) {
         if (response == null) {
             return null;
         }
-        
-        return Inventory.builder()
-                .skuCode(response.getSkuCode())
-                .quantity(response.getAvailableQuantity())
-                .build();
+
+        // Use domain factory method with validation
+        return Inventory.create(
+                response.getSkuCode(),
+                response.getAvailableQuantity() != null ? response.getAvailableQuantity() : 0
+        );
     }
 }

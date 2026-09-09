@@ -18,24 +18,58 @@ import java.util.stream.Collectors;
 @Component
 @Slf4j
 public class ProductMapper {
-    
+
     /**
      * Convert ProductRequest DTO to Product entity.
+     * Uses domain factory method to ensure business validation.
+     * Generates SKU code from product name and assigns default category.
      *
      * @param productRequest The product request DTO
-     * @return Product entity
+     * @return Product entity with business validation enforced
      */
     public Product toEntity(ProductRequest productRequest) {
         if (productRequest == null) {
             log.warn("ProductRequest is null, returning null entity");
             return null;
         }
-        
-        return Product.builder()
-                .name(productRequest.getName())
-                .description(productRequest.getDescription())
-                .price(productRequest.getPrice())
-                .build();
+
+        // Generate SKU code from product name (remove spaces, uppercase, limit to 50 chars)
+        String skuCode = generateSkuCode(productRequest.getName());
+
+        // Use domain factory method with validation
+        return Product.create(
+                productRequest.getName(),
+                productRequest.getDescription(),
+                productRequest.getPrice(),
+                skuCode,
+                "General" // Default category, could be enhanced to accept category in ProductRequest
+        );
+    }
+
+    /**
+     * Generates a SKU code from product name.
+     * Format: Uppercase, underscores for spaces, alphanumeric only.
+     *
+     * @param productName The product name
+     * @return Generated SKU code
+     */
+    private String generateSkuCode(String productName) {
+        if (productName == null || productName.trim().isEmpty()) {
+            return "PRODUCT_" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        }
+
+        // Convert to uppercase, replace spaces/special chars with underscores, limit length
+        String sku = productName.toUpperCase()
+                .replaceAll("[^A-Z0-9]+", "_")
+                .replaceAll("_+", "_")
+                .replaceAll("^_|_$", ""); // Remove leading/trailing underscores
+
+        // Limit to 50 characters
+        if (sku.length() > 50) {
+            sku = sku.substring(0, 50);
+        }
+
+        return sku;
     }
     
     /**
@@ -74,11 +108,12 @@ public class ProductMapper {
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
-    
+
     /**
      * Update existing Product entity with ProductRequest data.
+     * Uses domain business logic methods to ensure validation.
      *
-     * @param product The existing product entity
+     * @param product        The existing product entity
      * @param productRequest The product request with updated data
      */
     public void updateEntity(Product product, ProductRequest productRequest) {
@@ -86,9 +121,14 @@ public class ProductMapper {
             log.warn("Product or ProductRequest is null, skipping update");
             return;
         }
-        
-        product.setName(productRequest.getName());
-        product.setDescription(productRequest.getDescription());
-        product.setPrice(productRequest.getPrice());
+
+        // Use domain methods for updates (enforces business validation)
+        product.updateInfo(
+                productRequest.getName(),
+                productRequest.getDescription(),
+                null // Keep existing category, or could extract from request
+        );
+
+        product.updatePrice(productRequest.getPrice());
     }
 }

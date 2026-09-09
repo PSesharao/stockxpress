@@ -118,7 +118,10 @@ public class InventoryService implements IInventoryService {
         log.info("Updating inventory for SKU code: {} with quantity: {}", skuCode, quantity);
 
         Inventory inventory = getInventoryBySkuCode(skuCode);
-        inventory.setQuantity(quantity);
+
+        // Use domain business method for inventory reconciliation
+        // This ensures quantity cannot be less than reserved quantity
+        inventory.reconcileInventory(quantity);
 
         Inventory updatedInventory = inventoryRepository.save(inventory);
         log.info("Successfully updated inventory for SKU code: {}", skuCode);

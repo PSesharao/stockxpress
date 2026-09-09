@@ -1,0 +1,218 @@
+openapi: 3.0.3
+info:
+  title: StockXpress Inventory Service API
+  description: |
+    Inventory Management API for StockXpress e-commerce platform.
+    Manages stock levels, availability checks, and inventory updates.
+    
+    **Business Context:**
+    - Customers check product availability before ordering
+    - Order Service validates stock before placing orders
+    - Operators manage inventory levels and restock products
+    - Real-time cache (Redis) for high-performance stock checks
+  version: 1.0.0
+  contact:
+    name: StockXpress Platform Team
+    email: platform@stockxpress.com
+servers:
+  - url: http://localhost:8080/api
+    description: API Gateway (local)
+  - url: https://api.stockxpress.com/api
+    description: Production API Gateway
+tags:
+  - name: Inventory
+    description: Stock management operations
+  - name: Health
+    description: Service health and monitoring
+
+paths:
+  /inventory:
+    get:
+      tags:
+        - Inventory
+      summary: Check stock availability for SKUs
+      description: |
+        Checks stock availability for one or more SKU codes.
+        
+        **Business Scenario:** Customer checks if product is in stock
+        **Actor:** Customer, Order Service (Circuit Breaker protected)
+        **Authorization:** Public access
+        **Performance:** Cached in Redis (TTL: 5 minutes)
+      operationId: isInStock
+      parameters:
+        - name: skuCode
+          in: query
+          required: true
+          description: Comma-separated list of SKU codes to check
+          schema:
+            type: string
+          example: "IPHONE_15_PRO,SAMSUNG_S24"
+      responses:
+        '200':
+          description: Stock availability status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryResponse'
+              example:
+                - skuCode: "IPHONE_15_PRO"
+                  isInStock: true
+                  quantity: 50
+                - skuCode: "SAMSUNG_S24"
+                  isInStock: false
+                  quantity: 0
+        '400':
+          description: Invalid SKU code format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Service temporarily unavailable (fallback triggered)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                timestamp: "2026-09-08T10:30:00Z"
+                status: 503
+                error: "Service Unavailable"
+                message: "Inventory service is temporarily unavailable. Circuit breaker OPEN."
+                path: "/api/inventory"
+
+  /inventory/restock:
+    post:
+      tags:
+        - Inventory
+      summary: Restock inventory
+      description: |
+        Updates stock levels for products (operator action).
+        
+        **Business Scenario:** Operator receives new stock shipment and updates inventory
+        **Actor:** Operator
+        **Authorization:** Requires JWT with ROLE_ADMIN
+        **Side Effects:** Clears Redis cache for affected SKU codes
+      operationId: restockInventory
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestockRequest'
+            example:
+              skuCode: "IPHONE_15_PRO"
+              quantityToAdd: 100
+      responses:
+        '200':
+          description: Inventory restocked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryResponse'
+              example:
+                skuCode: "IPHONE_15_PRO"
+                isInStock: true
+                quantity: 150
+        '400':
+          description: Invalid request
+        '401':
+          description: Unauthorized - Missing or invalid JWT token
+        '403':
+          description: Forbidden - Insufficient permissions
+        '404':
+          description: SKU code not found in inventory
+
+  /actuator/health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+                  components:
+                    type: object
+                    properties:
+                      db:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: UP
+                      redis:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: UP
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  
+  schemas:
+    InventoryResponse:
+      type: object
+      required:
+        - skuCode
+        - isInStock
+        - quantity
+      properties:
+        skuCode:
+          type: string
+          description: Stock Keeping Unit code
+          example: "IPHONE_15_PRO"
+        isInStock:
+          type: boolean
+          description: Whether product is available (quantity > 0)
+          example: true
+        quantity:
+          type: integer
+          description: Current stock quantity
+          example: 50
+    
+    RestockRequest:
+      type: object
+      required:
+        - skuCode
+        - quantityToAdd
+      properties:
+        skuCode:
+          type: string
+          pattern: '^[A-Z0-9_]+$'
+          example: "IPHONE_15_PRO"
+        quantityToAdd:
+          type: integer
+          minimum: 1
+          example: 100
+    
+    Error:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string

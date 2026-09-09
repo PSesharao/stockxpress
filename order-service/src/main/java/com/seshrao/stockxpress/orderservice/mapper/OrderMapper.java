@@ -21,31 +21,31 @@ public class OrderMapper {
 
     /**
      * Maps OrderRequest DTO to Order entity.
+     * Uses domain factory method to ensure business invariants are enforced.
      *
      * @param orderRequest The order request from the client
      * @return Order entity with generated order number
      */
     public Order toEntity(OrderRequest orderRequest) {
         log.debug("Mapping OrderRequest to Order entity");
-        
+
         if (orderRequest == null) {
             log.warn("OrderRequest is null");
             return null;
         }
-        
+
         List<OrderLineItem> orderLineItems = orderRequest.getOrderLineItemList()
                 .stream()
                 .map(this::toOrderLineItem)
                 .collect(Collectors.toList());
-        
-        return Order.builder()
-                .orderNumber(generateOrderNumber())
-                .orderLineItemList(orderLineItems)
-                .build();
+
+        // Use domain factory method to create order with business validation
+        return Order.createNewOrder(orderLineItems);
     }
 
     /**
      * Maps OrderLineItemDto to OrderLineItem entity.
+     * Uses domain factory method to ensure business validation.
      *
      * @param dto The order line item DTO
      * @return OrderLineItem entity
@@ -55,20 +55,12 @@ public class OrderMapper {
             log.warn("OrderLineItemDto is null");
             return null;
         }
-        
-        return OrderLineItem.builder()
-                .skuCode(dto.getSkuCode())
-                .price(dto.getPrice())
-                .quantity(dto.getQuantity())
-                .build();
-    }
 
-    /**
-     * Generates a unique order number.
-     *
-     * @return UUID-based order number
-     */
-    private String generateOrderNumber() {
-        return UUID.randomUUID().toString();
+        // Use domain factory method with validation
+        return OrderLineItem.create(
+                dto.getSkuCode(),
+                dto.getPrice(),
+                dto.getQuantity()
+        );
     }
 }

@@ -1,0 +1,164 @@
+openapi: 3.0.3
+info:
+  title: StockXpress Notification Service API
+  description: |
+    Notification Service for StockXpress e-commerce platform.
+    Event-driven service that listens to Kafka topics and sends email notifications.
+    
+    **Business Context:**
+    - Consumes order events from Kafka
+    - Sends order confirmation emails to customers
+    - Provides observability into notification delivery status
+    
+    **Integration Points:**
+    - Kafka Consumer: Listens to `order-placed` topic
+    - Email Provider: Uses JavaMailSender (SMTP)
+    - No direct HTTP API for sending emails (event-driven only)
+  version: 1.0.0
+  contact:
+    name: StockXpress Platform Team
+    email: platform@stockxpress.com
+servers:
+  - url: http://localhost:8083
+    description: Notification Service (local)
+tags:
+  - name: Health
+    description: Service health and monitoring
+  - name: Events
+    description: Kafka event consumption (no REST endpoints)
+
+paths:
+  /actuator/health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+                  components:
+                    type: object
+                    properties:
+                      kafka:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: UP
+                      mail:
+                        type: object
+                        properties:
+                          status:
+                            type: string
+                            example: UP
+
+  /actuator/metrics:
+    get:
+      tags:
+        - Health
+      summary: Service metrics
+      description: |
+        Prometheus-compatible metrics endpoint.
+        
+        **Notification Metrics:**
+        - `kafka.consumer.records.consumed.total`: Total events consumed
+        - `email.sent.total`: Total emails sent successfully
+        - `email.failed.total`: Total email delivery failures
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Metrics data
+          content:
+            application/json:
+              schema:
+                type: object
+
+components:
+  schemas:
+    OrderPlacedEvent:
+      type: object
+      description: |
+        Event consumed from Kafka topic `order-placed`.
+        Published by Order Service when customer places order.
+        
+        **Kafka Configuration:**
+        - Topic: order-placed
+        - Consumer Group: notification-service-group
+        - Auto-commit: Enabled (after successful email send)
+        - Error Handling: Dead Letter Queue for failed notifications
+        
+        **Business Flow:**
+        1. Order Service publishes event after order creation
+        2. Notification Service consumes event
+        3. Email template populated with order details
+        4. Email sent via SMTP (Gmail/SendGrid)
+        5. Consumer commits offset (marks event as processed)
+      required:
+        - orderNumber
+        - email
+      properties:
+        orderNumber:
+          type: string
+          example: "ORD-20260908-001"
+        email:
+          type: string
+          format: email
+          description: Customer email for notification
+          example: "customer@example.com"
+        firstName:
+          type: string
+          example: "John"
+        lastName:
+          type: string
+          example: "Doe"
+        productName:
+          type: string
+          example: "iPhone 15 Pro"
+        quantity:
+          type: integer
+          example: 1
+        totalAmount:
+          type: number
+          format: double
+          example: 999.99
+    
+    EmailTemplate:
+      type: object
+      description: |
+        Email template for order confirmation.
+        
+        **Email Details:**
+        - From: noreply@stockxpress.com
+        - Subject: "Order Confirmation - {orderNumber}"
+        - Format: HTML
+        - Template Engine: Thymeleaf (optional)
+      properties:
+        to:
+          type: string
+          format: email
+        subject:
+          type: string
+        body:
+          type: string
+          description: HTML email body
+      example:
+        to: "customer@example.com"
+        subject: "Order Confirmation - ORD-20260908-001"
+        body: |
+          <html>
+            <body>
+              <h1>Thank you for your order, John!</h1>
+              <p>Your order <strong>ORD-20260908-001</strong> has been confirmed.</p>
+              <p>Product: iPhone 15 Pro (Quantity: 1)</p>
+              <p>Total: $999.99</p>
+            </body>
+          </html>
