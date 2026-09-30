@@ -1,258 +1,115 @@
-# AWS Secrets Manager Module
-# Manages database credentials and other sensitive data
+# AWS Secrets Manager Configuration
+# Manages application secrets securely
+# SECURITY: This module manages secret metadata only - actual secret values must be injected via AWS Secrets Manager console or CLI
 
-# KMS key for Secrets Manager encryption
-resource "aws_kms_key" "secrets" {
-  count               = var.create_kms_key ? 1 : 0
-  description         = "KMS key for Secrets Manager encryption"
-  enable_key_rotation = true
+variable "environment" {
+  description = "Environment name (dev, staging, prod)"
+  type        = string
+}
+
+variable "tags" {
+  description = "Common tags to apply to all resources"
+  type        = map(string)
+  default     = {}
+}
+
+# Database credentials secret
+resource "aws_secretsmanager_secret" "db_credentials" {
+  name_prefix             = "stockxpress/${var.environment}/db-credentials-"
+  description             = "Database credentials for StockXpress ${var.environment}"
+  recovery_window_in_days = 7
 
   tags = merge(
     var.tags,
     {
-      Name = "${var.project_name}-${var.environment}-secrets-kms"
+      Name        = "stockxpress-${var.environment}-db-credentials"
+      Environment = var.environment
+      ManagedBy   = "Terraform"
     }
   )
 }
 
-resource "aws_kms_alias" "secrets" {
-  count         = var.create_kms_key ? 1 : 0
-  name          = "alias/${var.project_name}-${var.environment}-secrets"
-  target_key_id = aws_kms_key.secrets[0].key_id
-}
+# SECURITY: Do not commit actual secret values
+# Secret values must be set using AWS Secrets Manager console, AWS CLI, or CI/CD pipeline
+# Example CLI command to set the secret:
+# aws secretsmanager put-secret-value \
+#   --secret-id <secret-id> \
+#   --secret-string '{"username":"admin","password":"generated-secure-password"}'
 
-# RDS Order Database Password
-resource "aws_secretsmanager_secret" "rds_order" {
-  name_prefix             = "${var.project_name}/${var.environment}/rds/order-"
-  description             = "Order Service RDS database credentials"
-  kms_key_id              = var.create_kms_key ? aws_kms_key.secrets[0].id : var.kms_key_id
-  recovery_window_in_days = var.recovery_window_in_days
+# Redis auth token secret
+resource "aws_secretsmanager_secret" "redis_auth_token" {
+  name_prefix             = "stockxpress/${var.environment}/redis-auth-token-"
+  description             = "Redis authentication token for StockXpress ${var.environment}"
+  recovery_window_in_days = 7
 
   tags = merge(
     var.tags,
     {
-      Name        = "${var.project_name}-${var.environment}-rds-order"
-      Service     = "order-service"
-      SecretType  = "database"
+      Name        = "stockxpress-${var.environment}-redis-auth-token"
+      Environment = var.environment
+      ManagedBy   = "Terraform"
     }
   )
 }
 
-resource "aws_secretsmanager_secret_version" "rds_order" {
-  secret_id = aws_secretsmanager_secret.rds_order.id
-  secret_string = jsonencode({
-    username = var.rds_order_username
-    password = var.rds_order_password
-    engine   = "mysql"
-    host     = var.rds_order_endpoint
-    port     = var.rds_order_port
-    dbname   = var.rds_order_database
-  })
-}
-
-# RDS Inventory Database Password
-resource "aws_secretsmanager_secret" "rds_inventory" {
-  name_prefix             = "${var.project_name}/${var.environment}/rds/inventory-"
-  description             = "Inventory Service RDS database credentials"
-  kms_key_id              = var.create_kms_key ? aws_kms_key.secrets[0].id : var.kms_key_id
-  recovery_window_in_days = var.recovery_window_in_days
+# API Keys secret
+resource "aws_secretsmanager_secret" "api_keys" {
+  name_prefix             = "stockxpress/${var.environment}/api-keys-"
+  description             = "External API keys for StockXpress ${var.environment}"
+  recovery_window_in_days = 7
 
   tags = merge(
     var.tags,
     {
-      Name        = "${var.project_name}-${var.environment}-rds-inventory"
-      Service     = "inventory-service"
-      SecretType  = "database"
+      Name        = "stockxpress-${var.environment}-api-keys"
+      Environment = var.environment
+      ManagedBy   = "Terraform"
     }
   )
 }
 
-resource "aws_secretsmanager_secret_version" "rds_inventory" {
-  secret_id = aws_secretsmanager_secret.rds_inventory.id
-  secret_string = jsonencode({
-    username = var.rds_inventory_username
-    password = var.rds_inventory_password
-    engine   = "mysql"
-    host     = var.rds_inventory_endpoint
-    port     = var.rds_inventory_port
-    dbname   = var.rds_inventory_database
-  })
-}
-
-# DocumentDB Password
-resource "aws_secretsmanager_secret" "documentdb" {
-  name_prefix             = "${var.project_name}/${var.environment}/documentdb/product-"
-  description             = "Product Service DocumentDB credentials"
-  kms_key_id              = var.create_kms_key ? aws_kms_key.secrets[0].id : var.kms_key_id
-  recovery_window_in_days = var.recovery_window_in_days
+# JWT signing key secret
+resource "aws_secretsmanager_secret" "jwt_signing_key" {
+  name_prefix             = "stockxpress/${var.environment}/jwt-signing-key-"
+  description             = "JWT signing key for StockXpress ${var.environment}"
+  recovery_window_in_days = 7
 
   tags = merge(
     var.tags,
     {
-      Name        = "${var.project_name}-${var.environment}-documentdb"
-      Service     = "product-service"
-      SecretType  = "database"
+      Name        = "stockxpress-${var.environment}-jwt-signing-key"
+      Environment = var.environment
+      ManagedBy   = "Terraform"
     }
   )
 }
 
-resource "aws_secretsmanager_secret_version" "documentdb" {
-  secret_id = aws_secretsmanager_secret.documentdb.id
-  secret_string = jsonencode({
-    username = var.documentdb_username
-    password = var.documentdb_password
-    engine   = "docdb"
-    host     = var.documentdb_endpoint
-    port     = var.documentdb_port
-    dbname   = var.documentdb_database
-  })
-}
-
-# ElastiCache Redis Auth Token
-resource "aws_secretsmanager_secret" "elasticache" {
-  name_prefix             = "${var.project_name}/${var.environment}/elasticache/redis-"
-  description             = "ElastiCache Redis authentication token"
-  kms_key_id              = var.create_kms_key ? aws_kms_key.secrets[0].id : var.kms_key_id
-  recovery_window_in_days = var.recovery_window_in_days
+# Observability basic auth credentials
+resource "aws_secretsmanager_secret" "observability_basic_auth" {
+  name                    = "stockxpress/observability/basic-auth"
+  description             = "Basic auth credentials for observability endpoints"
+  recovery_window_in_days = 7
 
   tags = merge(
     var.tags,
     {
-      Name        = "${var.project_name}-${var.environment}-elasticache"
-      Service     = "inventory-service"
-      SecretType  = "cache"
+      Name        = "stockxpress-observability-basic-auth"
+      Environment = var.environment
+      ManagedBy   = "Terraform"
     }
   )
 }
 
-resource "aws_secretsmanager_secret_version" "elasticache" {
-  secret_id = aws_secretsmanager_secret.elasticache.id
-  secret_string = jsonencode({
-    auth_token = var.elasticache_auth_token
-    endpoint   = var.elasticache_endpoint
-    port       = var.elasticache_port
-  })
-}
+# SECURITY NOTE: Secret values must be populated separately using one of these methods:
+# 1. AWS Secrets Manager Console
+# 2. AWS CLI: aws secretsmanager put-secret-value --secret-id <id> --secret-string '<json>'
+# 3. CI/CD pipeline with proper IAM permissions
+# 4. Terraform data source reading from external secure source
 
-# JWT Secret for API Gateway
-resource "random_password" "jwt_secret" {
-  count   = var.create_jwt_secret ? 1 : 0
-  length  = 64
-  special = true
-}
-
-resource "aws_secretsmanager_secret" "jwt" {
-  count                   = var.create_jwt_secret ? 1 : 0
-  name_prefix             = "${var.project_name}/${var.environment}/jwt/secret-"
-  description             = "JWT signing secret for API Gateway"
-  kms_key_id              = var.create_kms_key ? aws_kms_key.secrets[0].id : var.kms_key_id
-  recovery_window_in_days = var.recovery_window_in_days
-
-  tags = merge(
-    var.tags,
-    {
-      Name        = "${var.project_name}-${var.environment}-jwt"
-      Service     = "api-gateway"
-      SecretType  = "authentication"
-    }
-  )
-}
-
-resource "aws_secretsmanager_secret_version" "jwt" {
-  count     = var.create_jwt_secret ? 1 : 0
-  secret_id = aws_secretsmanager_secret.jwt[0].id
-  secret_string = jsonencode({
-    secret = random_password.jwt_secret[0].result
-  })
-}
-
-# Keycloak Admin Credentials
-resource "random_password" "keycloak_admin" {
-  count   = var.create_keycloak_secret ? 1 : 0
-  length  = 32
-  special = true
-}
-
-resource "aws_secretsmanager_secret" "keycloak" {
-  count                   = var.create_keycloak_secret ? 1 : 0
-  name_prefix             = "${var.project_name}/${var.environment}/keycloak/admin-"
-  description             = "Keycloak admin credentials"
-  kms_key_id              = var.create_kms_key ? aws_kms_key.secrets[0].id : var.kms_key_id
-  recovery_window_in_days = var.recovery_window_in_days
-
-  tags = merge(
-    var.tags,
-    {
-      Name        = "${var.project_name}-${var.environment}-keycloak"
-      Service     = "keycloak"
-      SecretType  = "admin"
-    }
-  )
-}
-
-resource "aws_secretsmanager_secret_version" "keycloak" {
-  count     = var.create_keycloak_secret ? 1 : 0
-  secret_id = aws_secretsmanager_secret.keycloak[0].id
-  secret_string = jsonencode({
-    username = var.keycloak_admin_username
-    password = random_password.keycloak_admin[0].result
-  })
-}
-
-# Email Service Credentials (for notifications)
-resource "aws_secretsmanager_secret" "email" {
-  count                   = var.create_email_secret ? 1 : 0
-  name_prefix             = "${var.project_name}/${var.environment}/email/smtp-"
-  description             = "SMTP credentials for email notifications"
-  kms_key_id              = var.create_kms_key ? aws_kms_key.secrets[0].id : var.kms_key_id
-  recovery_window_in_days = var.recovery_window_in_days
-
-  tags = merge(
-    var.tags,
-    {
-      Name        = "${var.project_name}-${var.environment}-email"
-      Service     = "notification-service"
-      SecretType  = "smtp"
-    }
-  )
-}
-
-resource "aws_secretsmanager_secret_version" "email" {
-  count     = var.create_email_secret ? 1 : 0
-  secret_id = aws_secretsmanager_secret.email[0].id
-  secret_string = jsonencode({
-    host     = var.smtp_host
-    port     = var.smtp_port
-    username = var.smtp_username
-    password = var.smtp_password
-  })
-}
-
-# Rotation Lambda IAM Role (for automatic password rotation)
-resource "aws_iam_role" "secrets_rotation" {
-  count = var.enable_rotation ? 1 : 0
-  name  = "${var.project_name}-${var.environment}-secrets-rotation"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = var.tags
-}
-
-resource "aws_iam_role_policy" "secrets_rotation" {
-  count = var.enable_rotation ? 1 : 0
-  name  = "secrets-rotation-policy"
-  role  = aws_iam_role.secrets_rotation[0].id
+# IAM policy for applications to read secrets
+resource "aws_iam_policy" "secrets_read" {
+  name_prefix = "stockxpress-${var.environment}-secrets-read-"
+  description = "Allow reading StockXpress secrets from Secrets Manager"
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -260,59 +117,81 @@ resource "aws_iam_role_policy" "secrets_rotation" {
       {
         Effect = "Allow"
         Action = [
-          "secretsmanager:DescribeSecret",
           "secretsmanager:GetSecretValue",
-          "secretsmanager:PutSecretValue",
-          "secretsmanager:UpdateSecretVersionStage"
+          "secretsmanager:DescribeSecret"
         ]
-        Resource = "arn:aws:secretsmanager:*:*:secret:${var.project_name}/${var.environment}/*"
+        Resource = [
+          aws_secretsmanager_secret.db_credentials.arn,
+          aws_secretsmanager_secret.redis_auth_token.arn,
+          aws_secretsmanager_secret.api_keys.arn,
+          aws_secretsmanager_secret.jwt_signing_key.arn,
+          aws_secretsmanager_secret.observability_basic_auth.arn
+        ]
       },
       {
         Effect = "Allow"
         Action = [
-          "secretsmanager:GetRandomPassword"
+          "kms:Decrypt"
         ]
         Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ]
-        Resource = "arn:aws:logs:*:*:*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "kms:Decrypt",
-          "kms:DescribeKey",
-          "kms:GenerateDataKey"
-        ]
-        Resource = var.create_kms_key ? aws_kms_key.secrets[0].arn : var.kms_key_id
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" : "secretsmanager.${data.aws_region.current.name}.amazonaws.com"
+          }
+        }
       }
     ]
   })
+
+  tags = merge(
+    var.tags,
+    {
+      Name        = "stockxpress-${var.environment}-secrets-read-policy"
+      Environment = var.environment
+    }
+  )
 }
 
-# Resource policy for Secrets Manager (allows specific services to read)
-resource "aws_secretsmanager_secret_policy" "rds_order" {
-  count      = var.enable_resource_policy ? 1 : 0
-  secret_arn = aws_secretsmanager_secret.rds_order.arn
+# Data source for current region
+data "aws_region" "current" {}
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "AllowEKSServiceAccountAccess"
-        Effect = "Allow"
-        Principal = {
-          AWS = var.eks_service_account_roles
-        }
-        Action   = "secretsmanager:GetSecretValue"
-        Resource = "*"
-      }
-    ]
-  })
+# Outputs - ARNs only, never expose secret values
+output "db_credentials_secret_arn" {
+  description = "ARN of the database credentials secret"
+  value       = aws_secretsmanager_secret.db_credentials.arn
+}
+
+output "redis_auth_token_secret_arn" {
+  description = "ARN of the Redis auth token secret"
+  value       = aws_secretsmanager_secret.redis_auth_token.arn
+}
+
+output "api_keys_secret_arn" {
+  description = "ARN of the API keys secret"
+  value       = aws_secretsmanager_secret.api_keys.arn
+}
+
+output "jwt_signing_key_secret_arn" {
+  description = "ARN of the JWT signing key secret"
+  value       = aws_secretsmanager_secret.jwt_signing_key.arn
+}
+
+output "observability_basic_auth_secret_arn" {
+  description = "ARN of the observability basic auth secret"
+  value       = aws_secretsmanager_secret.observability_basic_auth.arn
+}
+
+output "secrets_read_policy_arn" {
+  description = "ARN of the IAM policy for reading secrets"
+  value       = aws_iam_policy.secrets_read.arn
+}
+
+output "db_credentials_secret_name" {
+  description = "Name of the database credentials secret"
+  value       = aws_secretsmanager_secret.db_credentials.name
+}
+
+output "redis_auth_token_secret_name" {
+  description = "Name of the Redis auth token secret"
+  value       = aws_secretsmanager_secret.redis_auth_token.name
 }

@@ -85,6 +85,7 @@ spec:
                   number: 8080
 ---
 # Ingress for Observability Endpoints (Internal only)
+# Authentication credentials are managed via External Secrets - see k8s/base/infrastructure/observability-external-secret.yml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -136,8 +137,3 @@ spec:
                 name: zipkin-service
                 port:
                   number: 9411
----
-# Basic Auth Secret for Observability (create with kubectl)
-# kubectl create secret generic observability-basic-auth \
-#   --from-literal=auth=$(htpasswd -nb admin 'your-password') \
-#   -n stockxpress
