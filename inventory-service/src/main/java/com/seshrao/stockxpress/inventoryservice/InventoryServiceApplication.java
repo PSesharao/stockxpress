@@ -5,24 +5,11 @@ import com.seshrao.stockxpress.inventoryservice.repository.InventoryRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
 
-/**
- * Main application class for Inventory Service.
- * Enables caching, Eureka client for service discovery, and component scanning for common-lib.
- *
- * @author StockXpress Team
- */
 @SpringBootApplication
 @EnableEurekaClient
-@EnableCaching
-@ComponentScan(basePackages = {
-        "com.seshrao.stockxpress.inventoryservice",
-        "com.seshrao.stockxpress.common"
-})
 public class InventoryServiceApplication {
 
 	public static void main(String[] args) {

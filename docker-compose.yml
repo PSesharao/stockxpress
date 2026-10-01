@@ -1,462 +1,186 @@
-version: '3.8'
-
-networks:
-  stockxpress-network:
-    driver: bridge
-
-volumes:
-  mongo-data:
-  mysql-order-data:
-  mysql-inventory-data:
-  mysql-keycloak-data:
-  redis-data:
-  kafka-data:
-  zookeeper-data:
-  prometheus-data:
-  grafana-data:
-
+---
+version: '3'
 services:
-  #=================================================================
-  # Infrastructure Services
-  #=================================================================
-  
-  # MongoDB for Product Service
-  mongo:
-    image: mongo:4.4.14-rc0-focal
-    container_name: mongo
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME:-root}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
-      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-product-service}
-    volumes:
-      - mongo-data:/data/db
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
+  ## MySQL Docker Compose Config
+#  mysql-order:
+#    container_name: mysql-order
+#    image: mysql:5.7
+#    environment:
+#      MYSQL_ROOT_PASSWORD: root
+#      MYSQL_DATABASE: order-service
+#      MYSQL_USER: sesh
+#      MYSQL_PASSWORD: password
+#    volumes:
+#      - ./mysql-order:/var/lib/mysql
+#    ports:
+#      - "3308:3306"
+#    restart: unless-stopped
+#
+#  mysql-inventory:
+#    container_name: mysql-inventory
+#    image: mysql:5.7
+#    environment:
+#      MYSQL_ROOT_PASSWORD: root
+#      MYSQL_DATABASE: inventory-service
+#      MYSQL_USER: sesh
+#      MYSQL_PASSWORD: password
+#    volumes:
+#      - ./mysql-inventory:/var/lib/mysql
+#    ports:
+#      - "3307:3306"
+#    restart: unless-stopped
+#
+#  ## Mongo Docker Compose Config
+#  mongo:
+#    container_name: mongo
+#    image: mongo:4.4.14-rc0-focal
+#    restart: unless-stopped
+#    ports:
+#      - "27017:27017"
+#    expose:
+#      - "27017"
+#    volumes:
+#      - ./mongo-data:/data/db
+#
+#  ## Keycloak Config with Mysql database
+#  keycloak-mysql:
+#    container_name: keycloak-mysql
+#    image: mysql:5.7
+#    volumes:
+#      - ./mysql_keycloak_data:/var/lib/mysql
+#    environment:
+#      MYSQL_ROOT_PASSWORD: root
+#      MYSQL_DATABASE: keycloak
+#      MYSQL_USER: keycloak
+#      MYSQL_PASSWORD: password
+#
+#  keycloak:
+#    container_name: keycloak
+#    image: quay.io/keycloak/keycloak:18.0.0
+#    command: [ "start-dev", "--import-realm" ]
+#    environment:
+#      DB_VENDOR: MYSQL
+#      DB_ADDR: mysql
+#      DB_DATABASE: keycloak
+#      DB_USER: keycloak
+#      DB_PASSWORD: password
+#      KEYCLOAK_ADMIN: admin
+#      KEYCLOAK_ADMIN_PASSWORD: admin
+#    ports:
+#      - "8080:8080"
+#    volumes:
+#      - ./realms/:/opt/keycloak/data/import/
+#    depends_on:
+#      - keycloak-mysql
 
-  # MySQL for Order Service
-  mysql-order:
-    image: mysql:8.0
-    container_name: mysql-order
-    restart: unless-stopped
-    ports:
-      - "3308:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: ${ORDER_DB_PASSWORD:-root}
-      MYSQL_DATABASE: ${ORDER_DB_NAME:-order_service}
-      MYSQL_USER: ${ORDER_DB_USERNAME:-orderuser}
-      MYSQL_PASSWORD: ${ORDER_DB_PASSWORD:-password}
-    volumes:
-      - mysql-order-data:/var/lib/mysql
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-
-  # MySQL for Inventory Service
-  mysql-inventory:
-    image: mysql:8.0
-    container_name: mysql-inventory
-    restart: unless-stopped
-    ports:
-      - "3307:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: ${INVENTORY_DB_PASSWORD:-root}
-      MYSQL_DATABASE: ${INVENTORY_DB_NAME:-inventory_service}
-      MYSQL_USER: ${INVENTORY_DB_USERNAME:-inventoryuser}
-      MYSQL_PASSWORD: ${INVENTORY_DB_PASSWORD:-password}
-    volumes:
-      - mysql-inventory-data:/var/lib/mysql
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-
-  # MySQL for Keycloak
-  keycloak-mysql:
-    image: mysql:8.0
-    container_name: keycloak-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${KEYCLOAK_MYSQL_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${KEYCLOAK_MYSQL_DATABASE:-keycloak}
-      MYSQL_USER: ${KEYCLOAK_MYSQL_USER:-keycloak}
-      MYSQL_PASSWORD: ${KEYCLOAK_MYSQL_PASSWORD:-password}
-    volumes:
-      - mysql-keycloak-data:/var/lib/mysql
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
-
-  # Redis for Distributed Caching
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    command: redis-server --requirepass ${REDIS_PASSWORD:-password}
-    volumes:
-      - redis-data:/data
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # Zookeeper for Kafka
   zookeeper:
     image: confluentinc/cp-zookeeper:7.0.1
     container_name: zookeeper
-    restart: unless-stopped
     environment:
-      ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_CLIENT_PORT:-2181}
-      ZOOKEEPER_TICK_TIME: ${ZOOKEEPER_TICK_TIME:-2000}
-    volumes:
-      - zookeeper-data:/var/lib/zookeeper/data
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: echo srvr | nc localhost 2181 || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 5
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
 
-  # Kafka Message Broker
   broker:
     image: confluentinc/cp-kafka:7.0.1
     container_name: broker
-    restart: unless-stopped
     ports:
       - "9092:9092"
     depends_on:
       - zookeeper
     environment:
-      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID:-1}
-      KAFKA_ZOOKEEPER_CONNECT: ${KAFKA_ZOOKEEPER_CONNECT:-zookeeper:2181}
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://broker:29092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_REPLICATION_FACTOR:-1}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
 
-  # Zipkin for Distributed Tracing
-  zipkin:
-    image: openzipkin/zipkin:latest
-    container_name: zipkin
-    restart: unless-stopped
-    ports:
-      - "9411:9411"
-    environment:
-      - STORAGE_TYPE=mem
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9411/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # Keycloak for Authentication
-  keycloak:
-    image: quay.io/keycloak/keycloak:20.0.0
-    container_name: keycloak
-    restart: unless-stopped
-    command: ["start-dev", "--import-realm"]
-    ports:
-      - "8181:8080"
-    environment:
-      KC_DB: mysql
-      KC_DB_URL: jdbc:mysql://keycloak-mysql:3306/${KEYCLOAK_DB_DATABASE:-keycloak}
-      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak}
-      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-password}
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      KC_HEALTH_ENABLED: true
-      KC_METRICS_ENABLED: true
-    volumes:
-      - ./realms:/opt/keycloak/data/import
-    depends_on:
-      - keycloak-mysql
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-
-  # Prometheus for Metrics Collection
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    restart: unless-stopped
-    ports:
-      - "9090:9090"
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./prometheus/alerts:/etc/prometheus/alerts
-      - prometheus-data:/prometheus
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # Grafana for Metrics Visualization
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
-      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
-    depends_on:
-      - prometheus
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  #=================================================================
-  # Microservices
-  #=================================================================
-
-  # Discovery Server (Eureka)
-  discovery-server:
-    build:
-      context: .
-      dockerfile: discovery-server/Dockerfile
-    image: stockxpress/discovery-server:latest
-    container_name: discovery-server
-    restart: unless-stopped
-    ports:
-      - "8761:8761"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-      EUREKA_USERNAME: ${EUREKA_USERNAME:-eureka}
-      EUREKA_PASSWORD: ${EUREKA_PASSWORD:-password}
-      ZIPKIN_BASE_URL: ${ZIPKIN_BASE_URL:-http://zipkin:9411}
-    depends_on:
-      - zipkin
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8761/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-
-  # API Gateway
-  api-gateway:
-    build:
-      context: .
-      dockerfile: api-gateway/Dockerfile
-    image: stockxpress/api-gateway:latest
-    container_name: api-gateway
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://${EUREKA_USERNAME:-eureka}:${EUREKA_PASSWORD:-password}@discovery-server:8761/eureka
-      ZIPKIN_BASE_URL: ${ZIPKIN_BASE_URL:-http://zipkin:9411}
-      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/spring-boot-microservices-realm}
-      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://keycloak:8080/realms/spring-boot-microservices-realm/protocol/openid-connect/certs}
-      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY: ${LOG_LEVEL_SPRING_SECURITY:-DEBUG}
-    depends_on:
-      - discovery-server
-      - keycloak
-      - zipkin
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-
-  # Product Service
-  product-service:
-    build:
-      context: .
-      dockerfile: product-service/Dockerfile
-    image: stockxpress/product-service:latest
-    container_name: product-service
-    restart: unless-stopped
-    ports:
-      - "8081:8081"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-      SPRING_DATA_MONGODB_HOST: ${MONGO_HOST:-mongo}
-      SPRING_DATA_MONGODB_PORT: ${MONGO_PORT:-27017}
-      SPRING_DATA_MONGODB_DATABASE: ${MONGO_DATABASE:-product-service}
-      SPRING_DATA_MONGODB_USERNAME: ${MONGO_USERNAME:-root}
-      SPRING_DATA_MONGODB_PASSWORD: ${MONGO_PASSWORD:-password}
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://${EUREKA_USERNAME:-eureka}:${EUREKA_PASSWORD:-password}@discovery-server:8761/eureka
-      ZIPKIN_BASE_URL: ${ZIPKIN_BASE_URL:-http://zipkin:9411}
-      LOGGING_LEVEL_COM_SESHRAO_STOCKXPRESS: ${LOG_LEVEL_STOCKXPRESS:-DEBUG}
-    depends_on:
-      - mongo
-      - discovery-server
-      - zipkin
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 90s
-
-  # Inventory Service
-  inventory-service:
-    build:
-      context: .
-      dockerfile: inventory-service/Dockerfile
-    image: stockxpress/inventory-service:latest
-    container_name: inventory-service
-    restart: unless-stopped
-    ports:
-      - "8082:8082"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-      SPRING_DATASOURCE_URL: jdbc:mysql://${INVENTORY_DB_HOST:-mysql-inventory}:3306/${INVENTORY_DB_NAME:-inventory_service}?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${INVENTORY_DB_USERNAME:-inventoryuser}
-      SPRING_DATASOURCE_PASSWORD: ${INVENTORY_DB_PASSWORD:-password}
-      SPRING_REDIS_HOST: ${REDIS_HOST:-redis}
-      SPRING_REDIS_PORT: ${REDIS_PORT:-6379}
-      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-password}
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://${EUREKA_USERNAME:-eureka}:${EUREKA_PASSWORD:-password}@discovery-server:8761/eureka
-      ZIPKIN_BASE_URL: ${ZIPKIN_BASE_URL:-http://zipkin:9411}
-      LOGGING_LEVEL_COM_SESHRAO_STOCKXPRESS: ${LOG_LEVEL_STOCKXPRESS:-DEBUG}
-    depends_on:
-      - mysql-inventory
-      - redis
-      - discovery-server
-      - zipkin
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8082/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 90s
-
-  # Order Service
-  order-service:
-    build:
-      context: .
-      dockerfile: order-service/Dockerfile
-    image: stockxpress/order-service:latest
-    container_name: order-service
-    restart: unless-stopped
-    ports:
-      - "8083:8083"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-      SPRING_DATASOURCE_URL: jdbc:mysql://${ORDER_DB_HOST:-mysql-order}:3306/${ORDER_DB_NAME:-order_service}?useSSL=false&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${ORDER_DB_USERNAME:-orderuser}
-      SPRING_DATASOURCE_PASSWORD: ${ORDER_DB_PASSWORD:-password}
-      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-broker:29092}
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://${EUREKA_USERNAME:-eureka}:${EUREKA_PASSWORD:-password}@discovery-server:8761/eureka
-      ZIPKIN_BASE_URL: ${ZIPKIN_BASE_URL:-http://zipkin:9411}
-      LOGGING_LEVEL_COM_SESHRAO_STOCKXPRESS: ${LOG_LEVEL_STOCKXPRESS:-DEBUG}
-    depends_on:
-      - mysql-order
-      - broker
-      - discovery-server
-      - inventory-service
-      - zipkin
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8083/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 90s
-
-  # Notification Service
-  notification-service:
-    build:
-      context: .
-      dockerfile: notification-service/Dockerfile
-    image: stockxpress/notification-service:latest
-    container_name: notification-service
-    restart: unless-stopped
-    ports:
-      - "8084:8084"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
-      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-broker:29092}
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://${EUREKA_USERNAME:-eureka}:${EUREKA_PASSWORD:-password}@discovery-server:8761/eureka
-      ZIPKIN_BASE_URL: ${ZIPKIN_BASE_URL:-http://zipkin:9411}
-      LOGGING_LEVEL_COM_SESHRAO_STOCKXPRESS: ${LOG_LEVEL_STOCKXPRESS:-DEBUG}
-    depends_on:
-      - broker
-      - discovery-server
-      - zipkin
-    networks:
-      - stockxpress-network
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8084/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 90s
+  ## Zipkin
+#  zipkin:
+#    image: openzipkin/zipkin
+#    container_name: zipkin
+#    ports:
+#      - "9411:9411"
+#
+#  ## Eureka Server
+#  discovery-server:
+#    image: seshrao/discovery-server:latest
+#    container_name: discovery-server
+#    pull_policy: always
+#    ports:
+#      - "8761:8761"
+#    environment:
+#      - SPRING_PROFILES_ACTIVE=docker
+#    depends_on:
+#      - zipkin
+#
+#  api-gateway:
+#    image: seshrao/api-gateway:latest
+#    container_name: api-gateway
+#    pull_policy: always
+#    ports:
+#      - "8181:8080"
+#    expose:
+#      - "8181"
+#    environment:
+#      - SPRING_PROFILES_ACTIVE=docker
+#      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY= TRACE
+#    depends_on:
+#      - zipkin
+#      - discovery-server
+#      - keycloak
+#
+#  ## Product-Service Docker Compose Config
+#  product-service:
+#    container_name: product-service
+#    image: seshrao/product-service:latest
+#    pull_policy: always
+#    environment:
+#      - SPRING_PROFILES_ACTIVE=docker
+#    depends_on:
+#      - mongo
+#      - discovery-server
+#      - api-gateway
+#
+#  ## Order-Service Docker Compose Config
+#  order-service:
+#    container_name: order-service
+#    image: seshrao/order-service:latest
+#    pull_policy: always
+#    environment:
+#      - SPRING_PROFILES_ACTIVE=docker
+#      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-order:3308/order_service?useSSL=false
+#    depends_on:
+#      - mysql-order
+#      - broker
+#      - zipkin
+#      - discovery-server
+#      - api-gateway
+#
+#  ## Inventory-Service Docker Compose Config
+#  inventory-service:
+#    container_name: inventory-service
+#    image: seshrao/inventory-service:latest
+#    pull_policy: always
+#    environment:
+#      - SPRING_PROFILES_ACTIVE=docker
+#      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql-inventory:3307/inventory-service?useSSL=false
+#    depends_on:
+#      - mysql-inventory
+#      - discovery-server
+#      - api-gateway
+#
+#  ## Notification-Service Docker Compose Config
+#  notification-service:
+#    container_name: notification-service
+#    image: seshrao/notification-service:latest
+#    pull_policy: always
+#    environment:
+#      - SPRING_PROFILES_ACTIVE=docker
+#    depends_on:
+#      - zipkin
+#      - broker
+#      - discovery-server
+#      - api-gateway
+#

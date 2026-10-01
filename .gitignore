@@ -4,16 +4,13 @@ target/
 !**/src/test/**/target/
 
 ### IntelliJ IDEA ###
-#.idea/modules.xml
-#.idea/jarRepositories.xml
-#.idea/compiler.xml
-#.idea/libraries/
-.idea/
+.idea/modules.xml
+.idea/jarRepositories.xml
+.idea/compiler.xml
+.idea/libraries/
 *.iws
 *.iml
 *.ipr
-.agent/
-.slingshot/
 
 ### Eclipse ###
 .apt_generated
@@ -40,78 +37,7 @@ build/
 ### Mac OS ###
 .DS_Store
 
-### Database Data Directories ###
 /postgres/
 /postgres-inventory/
 /postgres-order/
-/mysql-order/
-/mysql-inventory/
-/mysql-keycloak/
-/mongo-data/
-
-### Observability Data ###
 /grafana/
-/prometheus-data/
-/zipkin-data/
-
-### Docker Volumes ###
-/redis-data/
-/kafka-data/
-/zookeeper-data/
-
-### Environment Files (CRITICAL - Never commit secrets!) ###
-.env
-.env.local
-.env.*.local
-*.env
-!.env.example
-
-### Backup Files ###
-/backups/
-*.sql
-*.dump
-*.rdb
-*.archive
-
-### Logs ###
-/logs/
-*.log
-*.log.*
-
-### Security ###
-/certs/
-/secrets/
-*.key
-*.pem
-*.crt
-*.p12
-*.jks
-
-### Kubernetes Secrets (CRITICAL - Never commit actual secrets!) ###
-k8s/**/mysql-secrets.yml
-k8s/**/*-secrets.yml
-!k8s/**/*-secrets.yml.template
-k8s/**/*sealed*.yml
-
-### Keycloak ###
-/realms/*.json
-!realms/spring-boot-microservices-realm-template.json
-
-### Terraform (CRITICAL - Never commit state or variable files with secrets!) ###
-**/.terraform/
-**/.terraform.lock.hcl
-**/terraform.tfstate
-**/terraform.tfstate.backup
-**/*.tfvars
-!**/*.tfvars.example
-**/override.tf
-**/override.tf.json
-**/*_override.tf
-**/*_override.tf.json
-**/.terraformrc
-**/terraform.rc
-
-### AWS Credentials ###
-**/.aws/
-**/credentials
-**/config

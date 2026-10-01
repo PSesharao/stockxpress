@@ -16,7 +16,6 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <modules>
-        <module>common-lib</module>
         <module>product-service</module>
         <module>order-service</module>
         <module>inventory-service</module>
@@ -34,13 +33,6 @@
 
     <dependencyManagement>
         <dependencies>
-            <!-- Common Library Module -->
-            <dependency>
-                <groupId>com.seshrao.stockxpress</groupId>
-                <artifactId>common-lib</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
             <dependency>
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers-bom</artifactId>
